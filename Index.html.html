@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>KRECK OS — Quote Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#151310; --paper:#f5f2ec; --card:#ffffff;
+    --orange:#e8650d; --orange-deep:#b84e08; --line:#dcd6cb;
+    --ok:#1e7a3c; --muted:#7a7265; --tape:#1c1915;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+    background:var(--paper);color:var(--ink);
+    padding-bottom:calc(96px + env(safe-area-inset-bottom));
+  }
+  header{
+    background:var(--ink);color:#fff;
+    padding:calc(14px + env(safe-area-inset-top)) 20px 14px;
+    display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  }
+  header .brand{font-size:20px;font-weight:800;letter-spacing:.06em}
+  header .brand span{color:var(--orange)}
+  header .sub{font-size:12px;color:#b7b0a4;letter-spacing:.14em;text-transform:uppercase}
+  #connDot{margin-left:auto;font-size:12px;color:#b7b0a4;display:flex;align-items:center;gap:6px}
+  #connDot::before{content:"";width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
+  #connDot.on::before{background:var(--ok)}
+  #connDot.err::before{background:#c62828}
+  nav{display:flex;background:var(--ink);border-top:1px solid #2c2823}
+  nav button{
+    flex:1;padding:13px 4px;background:none;border:none;color:#b7b0a4;
+    font-size:14px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  nav button.active{color:#fff;border-bottom-color:var(--orange)}
+  main{padding:18px 16px;max-width:860px;margin:0 auto}
+  .screen{display:none}
+  .screen.active{display:block}
+  h2{font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 10px}
+  h2:first-child{margin-top:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:10px 0 4px}
+  input,select{
+    width:100%;padding:12px;font-size:16px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+  .btn{
+    display:inline-block;width:100%;padding:15px;border:none;border-radius:10px;
+    background:var(--orange);color:#fff;font-size:16px;font-weight:700;cursor:pointer;
+    letter-spacing:.02em;
+  }
+  .btn:active{background:var(--orange-deep)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+  .btn:disabled{background:#c9c2b6;cursor:default}
+
+  .tierRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+  .tierBtn{
+    padding:14px 6px;border-radius:10px;border:2px solid var(--line);background:#fff;
+    cursor:pointer;text-align:center;
+  }
+  .tierBtn .t1{font-size:15px;font-weight:800;letter-spacing:.04em}
+  .tierBtn .t2{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.3}
+  .tierBtn.sel{border-color:var(--orange);background:#fff3e8}
+  .tierBtn.best .t1{color:var(--orange-deep)}
+  .toggleRow{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+  .toggleRow .tl{font-size:15px;font-weight:600}
+  .switch{position:relative;width:56px;height:32px}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#cfc8bb;border-radius:32px;cursor:pointer;transition:.2s}
+  .slider::before{content:"";position:absolute;width:26px;height:26px;border-radius:50%;
+    background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch input:checked + .slider{background:var(--orange)}
+  .switch input:checked + .slider::before{transform:translateX(24px)}
+
+  .cat{margin-bottom:6px}
+  .cat > .catHead{
+    width:100%;text-align:left;padding:12px 14px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;font-size:15px;font-weight:700;
+    cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  }
+  .cat > .catHead::after{content:"+";font-size:20px;color:var(--orange);font-weight:400}
+  .cat.open > .catHead::after{content:"–"}
+  .cat .items{display:none;padding:4px 0 8px}
+  .cat.open .items{display:block}
+  .pbItem{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:11px 14px;background:#fff;border:1px solid var(--line);border-top:none;
+    font-size:15px;cursor:pointer;
+  }
+  .pbItem:active{background:#fff3e8}
+  .pbItem .nm{font-weight:600}
+  .pbItem .meta{font-size:12.5px;color:var(--muted)}
+  .pbItem .add{color:var(--orange);font-weight:800;font-size:20px;padding:0 4px}
+
+  .li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  .li .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .li .nm{font-weight:700;font-size:15px}
+  .li .rm{background:none;border:none;color:#c62828;font-size:14px;font-weight:700;cursor:pointer;padding:4px}
+  .li .ctl{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .li .qty{width:90px;text-align:center;font-size:17px;font-weight:700;padding:8px}
+  .li .step{width:44px;height:44px;border-radius:9px;border:1.5px solid var(--ink);background:#fff;font-size:22px;font-weight:700;cursor:pointer}
+  .li .unit{font-size:13px;color:var(--muted);min-width:30px}
+  .li .lineTotal{margin-left:auto;font-weight:700;font-size:15px}
+
+  #tape{
+    position:fixed;left:0;right:0;bottom:0;background:var(--tape);color:#fff;
+    padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+    display:flex;gap:18px;align-items:center;justify-content:space-between;
+    font-variant-numeric:tabular-nums;border-top:3px solid var(--orange);
+  }
+  #tape .cell{text-align:center}
+  #tape .cell .v{font-size:19px;font-weight:800}
+  #tape .cell .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#a49b8d}
+  #tape .price .v{color:var(--orange);font-size:22px}
+
+  .qRow{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .qRow .who{font-weight:700}
+  .qRow .meta{font-size:13px;color:var(--muted)}
+  .qRow .amt{font-weight:800;font-size:17px}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    padding:3px 8px;border-radius:20px;background:#eee;color:var(--muted)}
+  .badge.Draft{background:#fff3e8;color:var(--orange-deep)}
+  .badge.Good{background:#eef4ee;color:#1e7a3c}
+  .badge.Better{background:#fff3e8;color:var(--orange-deep)}
+  .badge.Best{background:#151310;color:#fff}
+
+  .note{font-size:13px;color:var(--muted);margin:8px 2px}
+  #toast{
+    position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-80px);
+    background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;
+    font-weight:600;transition:transform .25s;z-index:50;border-left:4px solid var(--orange);
+  }
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion: reduce){ #toast{transition:none} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">KRECK<span>OS</span></div>
+  <div class="sub">Quote Engine v2</div>
+  <div id="connDot">connecting…</div>
+</header>
+<nav>
+  <button class="active" data-s="new">New Quote</button>
+  <button data-s="list">Quotes</button>
+  <button data-s="book">Price Book</button>
+</nav>
+
+<main>
+
+  <section id="s-new" class="screen active">
+    <h2>Customer</h2>
+    <div class="card">
+      <div class="row2">
+        <div><label>First name</label><input id="cFirst" autocomplete="off"></div>
+        <div><label>Last name</label><input id="cLast" autocomplete="off"></div>
+      </div>
+      <label>Phone</label><input id="cPhone" type="tel" inputmode="tel">
+      <label>Job address</label><input id="cAddr" placeholder="Street address">
+      <div class="row3">
+        <div><label>City</label><input id="cCity"></div>
+        <div><label>State</label><input id="cState" value="NY"></div>
+        <div><label>Zip</label><input id="cZip" inputmode="numeric"></div>
+      </div>
+      <label>Lead source</label>
+      <select id="cSource">
+        <option>Google</option><option>Referral</option><option>Repeat customer</option>
+        <option>Yard sign</option><option>Other</option>
+      </select>
+    </div>
+
+    <h2>Roof package</h2>
+    <div class="card">
+      <label>Roof size (squares)</label>
+      <input id="squares" type="number" inputmode="decimal" placeholder="e.g. 28">
+      <div class="toggleRow">
+        <span class="tl">Steep pitch (8/12+)</span>
+        <label class="switch"><input type="checkbox" id="steep"><span class="slider"></span></label>
+      </div>
+      <div class="tierRow">
+        <div class="tierBtn" data-tier="Good">
+          <div class="t1">GOOD</div>
+          <div class="t2">Duration Roof<br>2-yr Kreck warranty</div>
+        </div>
+        <div class="tierBtn" data-tier="Better">
+          <div class="t1">BETTER</div>
+          <div class="t2">Full OC System<br>Preferred Protection</div>
+        </div>
+        <div class="tierBtn best" data-tier="Best">
+          <div class="t1">BEST</div>
+          <div class="t2">Platinum Roof<br>Platinum Protection</div>
+        </div>
+      </div>
+      <p class="note">Enter squares, set steep if needed, tap a package — the full recipe loads below. Adjust, remove, or add anything after.</p>
+    </div>
+
+    <h2>Quote line items</h2>
+    <div id="lines"><p class="note" id="emptyLines">Nothing yet — tap a package above, or add items from the price book below.</p></div>
+    <button class="btn ghost" id="addCustom" style="margin-bottom:14px">+ Add custom line (one-off charge)</button>
+
+    <h2>Add from price book</h2>
+    <div id="pbPicker"><p class="note">Loading your price book…</p></div>
+
+    <h2>Markup</h2>
+    <div class="card">
+      <label>Markup on cost (%)</label>
+      <input id="markup" type="number" inputmode="decimal" value="66.7">
+      <p class="note" id="markupNote">Package buttons set this automatically to hit tier retail pricing. Adjust manually anytime.</p>
+    </div>
+
+    <button class="btn" id="saveBtn">Save quote</button>
+    <p class="note" id="saveMsg"></p>
+  </section>
+
+  <section id="s-list" class="screen">
+    <h2>Saved quotes</h2>
+    <div id="qList"><p class="note">Loading…</p></div>
+  </section>
+
+  <section id="s-book" class="screen">
+    <h2>Price book (your costs)</h2>
+    <p class="note">To change a price, edit it in Supabase → Table Editor → price_book. The app always uses the latest numbers.</p>
+    <div id="bookView"><p class="note">Loading…</p></div>
+  </section>
+
+</main>
+
+<div id="tape">
+  <div class="cell"><div class="v" id="tCost">$0</div><div class="k">Cost</div></div>
+  <div class="cell"><div class="v" id="tMarkup">66.7%</div><div class="k">Markup</div></div>
+  <div class="cell price"><div class="v" id="tPrice">$0</div><div class="k">Quote price</div></div>
+  <div class="cell"><div class="v" id="tMargin">0%</div><div class="k">Margin</div></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
+const SB_KEY = "sb_publishable_pxjQJVlvNgBqojzuNcvH5A_wUGT3VwZ";
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+const $ = id => document.getElementById(id);
+const fmt = n => "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt0 = n => "$" + Math.round(Number(n)).toLocaleString("en-US");
+
+let priceBook = [];
+let lines = [];
+let currentTier = null;
+
+/* Package recipes — quantities are PER SQUARE, items matched by exact
+   price_book name. Tier markups land retail on the package sheet:
+   Good $630/SQ · Better $675/SQ · Best $750/SQ (walkable). */
+const RECIPES = {
+  Good: {
+    markup: 67.3,
+    items: [
+      {name:'OC Duration - Architectural', perSQ:1.0},
+      {name:'Starter Strip',               perSQ:0.11},
+      {name:'Hip & Ridge Cap',             perSQ:0.143},
+      {name:'Synthetic Underlayment',      perSQ:0.071},
+      {name:'Ice & Water Barrier',         perSQ:0.25},
+      {name:'Ridge Vent',                  perSQ:0.143},
+      {name:'Drip Edge',                   perSQ:1.07},
+      {name:'Roofing Nails',               perSQ:0.036},
+      {custom:'Sales Tax & Shop Supplies', perSQ:1.0, unit:'SQ', cost:21.00},
+      {name:'Roofing Labor - Install',     perSQ:1.0},
+      {name:'Disposal - Per Square',       perSQ:1.0},
+    ]
+  },
+  Better: {
+    markup: 72.9,
+    items: [
+      {name:'OC Duration - Architectural', perSQ:1.0},
+      {name:'Starter Strip',               perSQ:0.11},
+      {name:'Hip & Ridge Cap',             perSQ:0.143},
+      {name:'Synthetic Underlayment',      perSQ:0.071},
+      {name:'Ice & Water Barrier',         perSQ:0.33},
+      {name:'Ridge Vent',                  perSQ:0.143},
+      {name:'Drip Edge',                   perSQ:1.07},
+      {name:'Roofing Nails',               perSQ:0.036},
+      {custom:'Sales Tax & Shop Supplies', perSQ:1.0, unit:'SQ', cost:21.00},
+      {name:'OC Preferred Protection Registration', perSQ:1.0},
+      {name:'Roofing Labor - Install',     perSQ:1.0},
+      {name:'Disposal - Per Square',       perSQ:1.0},
+    ]
+  },
+  Best: {
+    markup: 87.7,
+    items: [
+      {name:'OC Duration - Architectural', perSQ:1.0},
+      {name:'Starter Strip',               perSQ:0.11},
+      {name:'Hip & Ridge Cap',             perSQ:0.143},
+      {name:'Synthetic Underlayment',      perSQ:0.071},
+      {name:'Ice & Water Barrier',         perSQ:0.33},
+      {name:'Ridge Vent',                  perSQ:0.229},
+      {name:'Drip Edge',                   perSQ:1.07},
+      {name:'Roofing Nails',               perSQ:0.036},
+      {custom:'Sales Tax & Shop Supplies', perSQ:1.0, unit:'SQ', cost:21.00},
+      {name:'OC Platinum Protection Registration', perSQ:1.0},
+      {name:'Roofing Labor - Install',     perSQ:1.0},
+      {name:'Disposal - Per Square',       perSQ:1.0},
+    ]
+  }
+};
+const STEEP_ITEM = 'Steep Pitch Upcharge';
+
+document.querySelectorAll("nav button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    $("s-"+b.dataset.s).classList.add("active");
+    if(b.dataset.s==="list") loadQuotes();
+  });
+});
+
+let toastTimer;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+async function loadPriceBook(){
+  const {data,error} = await db.from("price_book")
+    .select("*").eq("active",true).order("category").order("name");
+  const dot=$("connDot");
+  if(error){
+    dot.className="err"; dot.textContent="offline";
+    $("pbPicker").innerHTML='<p class="note">Could not reach the database. Check your connection and reload.</p>';
+    return;
+  }
+  dot.className="on"; dot.textContent="connected";
+  priceBook = data;
+  renderPicker(); renderBookView();
+}
+
+function renderPicker(){
+  const cats = [...new Set(priceBook.map(i=>i.category))];
+  $("pbPicker").innerHTML = cats.map(c=>`
+    <div class="cat">
+      <button class="catHead">${c}</button>
+      <div class="items">
+        ${priceBook.filter(i=>i.category===c).map(i=>`
+          <div class="pbItem" data-id="${i.id}">
+            <div><div class="nm">${i.name}</div>
+            <div class="meta">${fmt(i.unit_cost)} / ${i.unit}</div></div>
+            <div class="add">+</div>
+          </div>`).join("")}
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".catHead").forEach(h=>
+    h.addEventListener("click",()=>h.parentElement.classList.toggle("open")));
+  document.querySelectorAll(".pbItem").forEach(el=>
+    el.addEventListener("click",()=>addLineFromBook(el.dataset.id)));
+}
+
+function renderBookView(){
+  const cats = [...new Set(priceBook.map(i=>i.category))];
+  $("bookView").innerHTML = cats.map(c=>`
+    <div class="card">
+      <strong>${c}</strong>
+      ${priceBook.filter(i=>i.category===c).map(i=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14.5px">
+          <span>${i.name}</span><span style="font-weight:600">${fmt(i.unit_cost)} / ${i.unit}</span>
+        </div>`).join("")}
+    </div>`).join("");
+}
+
+document.querySelectorAll(".tierBtn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const squares = Number($("squares").value);
+    if(!squares || squares<=0){ toast("Enter the roof size in squares first"); return; }
+    const tier = btn.dataset.tier;
+    buildPackage(tier, squares, $("steep").checked);
+    document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
+    btn.classList.add("sel");
+  });
+});
+
+function buildPackage(tier, squares, steep){
+  const recipe = RECIPES[tier];
+  lines = [];
+  for(const r of recipe.items){
+    if(r.custom){
+      lines.push({price_book_id:null, name:r.custom, category:'Package',
+                  unit:r.unit, unit_cost:r.cost, qty:round2(squares*r.perSQ)});
+    } else {
+      const item = priceBook.find(p=>p.name===r.name);
+      if(!item){ console.warn("Missing price book item:", r.name); continue; }
+      lines.push({price_book_id:item.id, name:item.name, category:item.category,
+                  unit:item.unit, unit_cost:Number(item.unit_cost),
+                  qty:round2(squares*r.perSQ)});
+    }
+  }
+  if(steep){
+    const s = priceBook.find(p=>p.name===STEEP_ITEM);
+    if(s) lines.push({price_book_id:s.id, name:s.name, category:s.category,
+                      unit:s.unit, unit_cost:Number(s.unit_cost), qty:squares});
+  }
+  currentTier = tier;
+  $("markup").value = recipe.markup;
+  renderLines();
+  toast(tier+" package loaded — "+squares+" SQ"+(steep?" (steep)":""));
+}
+const round2 = n => Math.round(n*100)/100;
+
+function addLineFromBook(id){
+  const item = priceBook.find(p=>p.id===id);
+  const existing = lines.find(l=>l.price_book_id===id);
+  if(existing){ existing.qty=round2(existing.qty+1); }
+  else lines.push({price_book_id:id, name:item.name, category:item.category,
+                   unit:item.unit, unit_cost:Number(item.unit_cost), qty:1});
+  renderLines(); toast(item.name+" added");
+}
+
+$("addCustom").addEventListener("click",()=>{
+  lines.push({price_book_id:null, name:"", category:"Custom", unit:"EA",
+              unit_cost:0, qty:1, isCustom:true});
+  renderLines();
+});
+
+function renderLines(){
+  if(!lines.length){
+    $("lines").innerHTML='<p class="note">Nothing yet — tap a package above, or add items from the price book below.</p>';
+    updateTape(); return;
+  }
+  $("lines").innerHTML = lines.map((l,i)=>`
+    <div class="li">
+      <div class="top">
+        ${l.isCustom
+          ? `<input placeholder="Describe the charge (e.g. Rebuild chimney chase)" data-i="${i}" class="cName" value="${l.name.replace(/"/g,'&quot;')}" style="font-weight:700;flex:1">`
+          : `<span class="nm">${l.name}</span>`}
+        <button class="rm" data-i="${i}">Remove</button>
+      </div>
+      <div class="ctl">
+        <button class="step" data-i="${i}" data-d="-1">−</button>
+        <input class="qty" data-i="${i}" type="number" inputmode="decimal" value="${l.qty}">
+        <button class="step" data-i="${i}" data-d="1">+</button>
+        <span class="unit">${l.unit}</span>
+        ${l.isCustom
+          ? `<span style="font-size:13px;color:var(--muted)">@ $</span><input class="cCost" data-i="${i}" type="number" inputmode="decimal" value="${l.unit_cost}" style="width:100px;padding:8px;font-weight:700">`
+          : ``}
+        <span class="lineTotal">${fmt(l.qty*l.unit_cost)}</span>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>{
+    lines.splice(b.dataset.i,1); renderLines();
+  }));
+  document.querySelectorAll(".step").forEach(b=>b.addEventListener("click",()=>{
+    const l=lines[b.dataset.i]; l.qty=Math.max(0.5, round2(l.qty+Number(b.dataset.d)));
+    renderLines();
+  }));
+  document.querySelectorAll(".qty").forEach(inp=>inp.addEventListener("change",()=>{
+    lines[inp.dataset.i].qty=Math.max(0,Number(inp.value)||0); renderLines();
+  }));
+  document.querySelectorAll(".cName").forEach(inp=>inp.addEventListener("input",()=>{
+    lines[inp.dataset.i].name=inp.value;
+  }));
+  document.querySelectorAll(".cCost").forEach(inp=>inp.addEventListener("change",()=>{
+    lines[inp.dataset.i].unit_cost=Number(inp.value)||0; renderLines();
+  }));
+  updateTape();
+}
+
+function totals(){
+  const cost = lines.reduce((s,l)=>s+l.qty*l.unit_cost,0);
+  const mk = Number($("markup").value)||0;
+  const price = cost*(1+mk/100);
+  const margin = price>0 ? (price-cost)/price*100 : 0;
+  return {cost,mk,price,margin};
+}
+function updateTape(){
+  const t=totals();
+  $("tCost").textContent=fmt0(t.cost);
+  $("tMarkup").textContent=t.mk+"%";
+  $("tPrice").textContent=fmt0(t.price);
+  $("tMargin").textContent=t.margin.toFixed(1)+"%";
+}
+$("markup").addEventListener("input",updateTape);
+
+$("saveBtn").addEventListener("click", async ()=>{
+  const first=$("cFirst").value.trim(), last=$("cLast").value.trim();
+  if(!first||!last){ toast("Enter the customer's name first"); return; }
+  if(!lines.length){ toast("Add at least one line item"); return; }
+  const unnamed = lines.find(l=>l.isCustom && !l.name.trim());
+  if(unnamed){ toast("Describe your custom charge before saving"); return; }
+  const btn=$("saveBtn"); btn.disabled=true; btn.textContent="Saving…";
+  try{
+    const {data:cust,error:e1} = await db.from("customers").insert({
+      first_name:first,last_name:last,phone:$("cPhone").value.trim()||null,
+      street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
+      state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
+      lead_source:$("cSource").value
+    }).select().single();
+    if(e1) throw e1;
+    const {data:job,error:e2} = await db.from("jobs").insert({
+      customer_id:cust.id,job_type:"Roofing",status:"Quoted",
+      street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
+      state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null
+    }).select().single();
+    if(e2) throw e2;
+    const {count} = await db.from("quotes").select("*",{count:"exact",head:true});
+    const qNum = "Q-"+new Date().getFullYear()+"-"+String((count||0)+1).padStart(3,"0");
+    const t=totals();
+    const {data:quote,error:e3} = await db.from("quotes").insert({
+      job_id:job.id,quote_number:qNum,title:"Roof Replacement Quote",
+      tier:currentTier||"Standard",status:"Draft",markup_pct:t.mk,
+      valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
+    }).select().single();
+    if(e3) throw e3;
+    const rows = lines.map((l,i)=>({
+      quote_id:quote.id,price_book_id:l.price_book_id,sort_order:i,
+      category:l.category,name:l.name,unit:l.unit,quantity:l.qty,unit_cost:l.unit_cost
+    }));
+    const {error:e4} = await db.from("quote_line_items").insert(rows);
+    if(e4) throw e4;
+
+    toast(qNum+" saved");
+    $("saveMsg").textContent="Saved as "+qNum+(currentTier?" ("+currentTier+" package)":"")+" — price "+fmt(t.price)+". Find it on the Quotes tab.";
+    lines=[]; currentTier=null; renderLines();
+    document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
+    ["cFirst","cLast","cPhone","cAddr","cCity","cZip","squares"].forEach(id=>$(id).value="");
+    $("steep").checked=false; $("markup").value=66.7; updateTape();
+  }catch(err){
+    console.error(err);
+    $("saveMsg").textContent="Save failed: "+(err.message||"unknown error")+". Check your connection and try again.";
+  }
+  btn.disabled=false; btn.textContent="Save quote";
+});
+
+async function loadQuotes(){
+  $("qList").innerHTML='<p class="note">Loading…</p>';
+  const {data,error} = await db.from("quotes")
+    .select("id,quote_number,tier,status,markup_pct,created_at,jobs(customer_id,city,customers:customer_id(first_name,last_name)),quote_line_items(line_cost)")
+    .order("created_at",{ascending:false}).limit(50);
+  if(error){ $("qList").innerHTML='<p class="note">Could not load quotes: '+error.message+'</p>'; return; }
+  if(!data.length){ $("qList").innerHTML='<p class="note">No quotes yet. Build your first one on the New Quote tab.</p>'; return; }
+  $("qList").innerHTML = data.map(q=>{
+    const cost=(q.quote_line_items||[]).reduce((s,li)=>s+Number(li.line_cost||0),0);
+    const price=cost*(1+Number(q.markup_pct||0)/100);
+    const cu=q.jobs?.customers;
+    const who=cu?cu.first_name+" "+cu.last_name:"—";
+    const d=new Date(q.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+    const tierBadge = q.tier && q.tier!=="Standard" ? `<span class="badge ${q.tier}">${q.tier}</span> ` : "";
+    return `<div class="qRow">
+      <div><div class="who">${who}</div>
+      <div class="meta">${q.quote_number} · ${d}${q.jobs?.city?" · "+q.jobs.city:""}</div></div>
+      <div style="text-align:right"><div class="amt">${fmt0(price)}</div>
+      ${tierBadge}<span class="badge ${q.status}">${q.status}</span></div>
+    </div>`;
+  }).join("");
+}
+
+loadPriceBook();
+updateTape();
+</script>
+</body>
+</html>
