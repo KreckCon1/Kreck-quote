@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>KRECK OS — Quote Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#151310; --paper:#f5f2ec; --card:#ffffff;
+    --orange:#e8650d; --orange-deep:#b84e08; --line:#dcd6cb;
+    --ok:#1e7a3c; --muted:#7a7265; --tape:#1c1915;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{min-height:100%}
+  body{
+    font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+    background:var(--paper);color:var(--ink);
+    padding-bottom:calc(200px + env(safe-area-inset-bottom));
+  }
+  header{
+    background:var(--ink);color:#fff;
+    padding:calc(14px + env(safe-area-inset-top)) 20px 14px;
+    display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  }
+  header .brand{font-size:20px;font-weight:800;letter-spacing:.06em}
+  header .brand span{color:var(--orange)}
+  header .sub{font-size:12px;color:#b7b0a4;letter-spacing:.14em;text-transform:uppercase}
+  #connDot{margin-left:auto;font-size:12px;color:#b7b0a4;display:flex;align-items:center;gap:6px}
+  #connDot::before{content:"";width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
+  #connDot.on::before{background:var(--ok)}
+  #connDot.err::before{background:#c62828}
+  nav{display:flex;background:var(--ink);border-top:1px solid #2c2823}
+  nav button{
+    flex:1;padding:13px 4px;background:none;border:none;color:#b7b0a4;
+    font-size:14px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  nav button.active{color:#fff;border-bottom-color:var(--orange)}
+  main{padding:18px 16px;max-width:860px;margin:0 auto}
+  .screen{display:none}
+  .screen.active{display:block}
+  h2{font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 10px}
+  h2:first-child{margin-top:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:10px 0 4px}
+  input,select{
+    width:100%;padding:12px;font-size:16px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+  .btn{
+    display:inline-block;width:100%;padding:15px;border:none;border-radius:10px;
+    background:var(--orange);color:#fff;font-size:16px;font-weight:700;cursor:pointer;
+    letter-spacing:.02em;
+  }
+  .btn:active{background:var(--orange-deep)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+  .btn:disabled{background:#c9c2b6;cursor:default}
+
+  .tradeRow{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+  .tradeBtn{
+    flex:0 0 auto;min-width:92px;padding:13px 12px;border-radius:10px;border:2px solid var(--line);
+    background:#fff;cursor:pointer;text-align:center;font-size:14.5px;font-weight:800;
+    letter-spacing:.03em;
+  }
+  .tradeBtn.sel{border-color:var(--ink);background:var(--ink);color:#fff}
+
+  .tierRow{display:grid;gap:8px;margin-top:12px}
+  .tierRow.n1{grid-template-columns:1fr}
+  .tierRow.n2{grid-template-columns:1fr 1fr}
+  .tierRow.n3{grid-template-columns:1fr 1fr 1fr}
+  .tierBtn{
+    padding:14px 6px;border-radius:10px;border:2px solid var(--line);background:#fff;
+    cursor:pointer;text-align:center;
+  }
+  .tierBtn .t1{font-size:15px;font-weight:800;letter-spacing:.04em}
+  .tierBtn .t2{font-size:12px;font-weight:700;color:var(--orange-deep);margin-top:2px}
+  .tierBtn .t3{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.3}
+  .tierBtn.sel{border-color:var(--orange);background:#fff3e8}
+  .toggleRow{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+  .toggleRow .tl{font-size:15px;font-weight:600}
+  .switch{position:relative;width:56px;height:32px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#cfc8bb;border-radius:32px;cursor:pointer;transition:.2s}
+  .slider::before{content:"";position:absolute;width:26px;height:26px;border-radius:50%;
+    background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch input:checked + .slider{background:var(--orange)}
+  .switch input:checked + .slider::before{transform:translateX(24px)}
+
+  .grpTitle{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    margin:14px 0 6px;font-weight:700}
+  .grpTitle:first-child{margin-top:0}
+  .addonGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .addonBtn{
+    padding:12px 10px;border-radius:10px;border:1.5px solid var(--line);background:#fff;
+    cursor:pointer;text-align:left;
+  }
+  .addonBtn:active{background:#fff3e8;border-color:var(--orange)}
+  .addonBtn .an{font-size:14px;font-weight:700}
+  .addonBtn .ap{font-size:12.5px;color:var(--orange-deep);font-weight:700;margin-top:2px}
+
+  .warnNote{background:#fff3e8;border:1.5px solid var(--orange);border-radius:10px;
+    padding:11px 14px;font-size:13.5px;font-weight:600;color:var(--orange-deep);margin-bottom:14px}
+
+  .li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  .li .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .li .nm{font-weight:700;font-size:15px}
+  .li .rm{background:none;border:none;color:#c62828;font-size:14px;font-weight:700;cursor:pointer;padding:4px}
+  .li .ctl{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .li .qty{width:90px;text-align:center;font-size:17px;font-weight:700;padding:8px}
+  .li .step{width:44px;height:44px;border-radius:9px;border:1.5px solid var(--ink);background:#fff;font-size:22px;font-weight:700;cursor:pointer}
+  .li .unit{font-size:13px;color:var(--muted);min-width:30px}
+  .li .lineTotal{margin-left:auto;font-weight:700;font-size:15px}
+  .li .hint{font-size:12px;color:var(--muted);margin-top:6px}
+
+  .phRow{display:grid;grid-template-columns:2fr 80px 100px 40px;gap:8px;align-items:center;margin-bottom:8px}
+  .phRow input{padding:9px}
+  .phAmt{font-weight:700;font-size:14px;text-align:right}
+  .phDel{background:none;border:none;color:#c62828;font-weight:700;font-size:16px;cursor:pointer}
+
+  #tape{
+    position:fixed;left:0;right:0;bottom:0;background:var(--tape);color:#fff;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    font-variant-numeric:tabular-nums;border-top:3px solid var(--orange);
+  }
+  #tape .mainRow{display:flex;gap:14px;align-items:center;justify-content:space-between}
+  #tape .cell{text-align:center}
+  #tape .cell .v{font-size:18px;font-weight:800}
+  #tape .cell .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#a49b8d}
+  #tape .price .v{color:var(--orange);font-size:22px}
+  #tapeSave{
+    padding:13px 22px;border:none;border-radius:9px;background:var(--orange);
+    color:#fff;font-size:15px;font-weight:800;letter-spacing:.03em;cursor:pointer;
+  }
+  #tapeSave:active{background:var(--orange-deep)}
+  #tapeSave:disabled{background:#5a544b;color:#a49b8d}
+  #tapeSplit{font-size:11.5px;color:#a49b8d;text-align:center;margin-top:6px;letter-spacing:.03em}
+  #tapeSplit b{color:#d8d2c7;font-weight:700}
+
+  .qRow{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .qRow .who{font-weight:700}
+  .qRow .meta{font-size:13px;color:var(--muted)}
+  .qRow .amt{font-weight:800;font-size:17px}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    padding:3px 8px;border-radius:20px;background:#eee;color:var(--muted)}
+  .badge.Draft{background:#fff3e8;color:var(--orange-deep)}
+  .badge.Sent{background:#e8f0fe;color:#1a56b0}
+  .badge.Approved{background:#eef4ee;color:#1e7a3c}
+  .badge.Declined{background:#fdecea;color:#c62828}
+  .qRow{cursor:pointer}
+  .qDetail{background:#faf8f4;border:1px solid var(--line);border-top:none;
+    border-radius:0 0 10px 10px;padding:14px;margin:-8px 0 8px;font-size:14px}
+  .qDetail .dLine{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)}
+  .qDetail .dMeta{color:var(--muted);font-size:13px;margin-bottom:8px}
+  .qDetail .statusRow{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+  .qDetail .stBtn{padding:9px 14px;border-radius:8px;border:1.5px solid var(--line);
+    background:#fff;font-size:13px;font-weight:700;cursor:pointer}
+  .qDetail .stBtn.cur{border-color:var(--orange);background:#fff3e8;color:var(--orange-deep)}
+  .qDetail .copyBtn{padding:9px 14px;border-radius:8px;border:none;background:var(--ink);
+    color:#fff;font-size:13px;font-weight:700;cursor:pointer;margin-left:auto}
+  .pipeStats{display:flex;gap:10px;margin-bottom:12px}
+  .pipeStats .ps{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:12px;text-align:center}
+  .pipeStats .ps .v{font-size:20px;font-weight:800}
+  .pipeStats .ps .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  .chipRow{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+  .chip{flex:0 0 auto;padding:9px 16px;border-radius:20px;border:1.5px solid var(--line);
+    background:#fff;font-size:13.5px;font-weight:700;cursor:pointer;color:var(--muted)}
+  .chip.sel{background:var(--ink);border-color:var(--ink);color:#fff}
+  .tempRow{display:flex;gap:8px;margin-top:6px}
+  .tempBtn{flex:1;padding:12px;font-size:26px;border-radius:10px;border:2px solid var(--line);
+    background:#fff;cursor:pointer;text-align:center}
+  .tempBtn.sel{border-color:var(--orange);background:#fff3e8}
+  .leadRow{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer}
+  .leadRow.emg{border-color:#c62828;border-width:2px}
+  .leadRow .who{font-weight:700}
+  .leadRow .meta{font-size:13px;color:var(--muted)}
+  .leadRow .temp{font-size:24px}
+  .leadDetail{background:#faf8f4;border:1px solid var(--line);border-top:none;
+    border-radius:0 0 10px 10px;padding:14px;margin:-8px 0 8px;font-size:14px}
+  .leadDetail .dMeta{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .leadDetail .actRow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .leadDetail .actBtn{padding:11px 14px;border-radius:8px;border:none;background:var(--orange);
+    color:#fff;font-size:13.5px;font-weight:700;cursor:pointer}
+  .leadDetail .actBtn.dark{background:var(--ink)}
+  .leadDetail .actBtn.gray{background:#fff;color:#c62828;border:1.5px solid #c62828}
+  .leadBanner{background:#e8f0fe;border:1.5px solid #1a56b0;border-radius:10px;
+    padding:11px 14px;font-size:13.5px;font-weight:600;color:#1a56b0;margin-bottom:14px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .leadBanner button{background:none;border:none;color:#1a56b0;font-weight:800;cursor:pointer;font-size:14px}
+  .leadTools{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+  .leadTools input{flex:1}
+  #showMore{margin-top:4px}
+
+  /* ---------- customer-facing preview ---------- */
+  #pvOverlay{position:fixed;inset:0;background:#fff;z-index:100;overflow-y:auto;display:none}
+  #pvOverlay.on{display:block}
+  .pvBar{position:sticky;top:0;background:var(--ink);color:#fff;display:flex;gap:10px;
+    justify-content:space-between;align-items:center;padding:12px 18px;z-index:101}
+  .pvBar button{padding:10px 18px;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer}
+  .pvBar .pvPrint{background:var(--orange);color:#fff}
+  .pvBar .pvClose{background:#3a352e;color:#fff}
+  .pvPage{max-width:760px;margin:0 auto;padding:36px 28px;color:#151310;
+    font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+  .pvHead{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:4px solid var(--orange);padding-bottom:18px;margin-bottom:22px}
+  .pvBrand{font-size:26px;font-weight:800;letter-spacing:.06em}
+  .pvBrand span{color:var(--orange)}
+  .pvBrand .tag{display:block;font-size:11px;letter-spacing:.14em;color:#7a7265;font-weight:600;margin-top:3px}
+  .pvCo{text-align:right;font-size:12.5px;color:#5a544b;line-height:1.5}
+  .pvTitle{font-size:20px;font-weight:800;margin-bottom:2px}
+  .pvSub{font-size:13px;color:#7a7265;margin-bottom:18px}
+  .pvBlock{margin-bottom:18px}
+  .pvBlock .bh{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7a7265;font-weight:700;margin-bottom:4px}
+  .pvTable{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 4px}
+  .pvTable th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:#7a7265;padding:8px 6px;border-bottom:2px solid #151310}
+  .pvTable th:last-child,.pvTable td:last-child{text-align:right}
+  .pvTable td{padding:9px 6px;border-bottom:1px solid #e5dfd4;vertical-align:top}
+  .pvTotal{display:flex;justify-content:flex-end;gap:30px;font-size:18px;font-weight:800;
+    padding:12px 6px;border-top:3px solid var(--orange)}
+  .pvFine{font-size:11.5px;color:#7a7265;line-height:1.55;margin-top:22px;border-top:1px solid #e5dfd4;padding-top:14px}
+  .pvWarn{background:#fff3e8;border:1px solid var(--orange);border-radius:8px;padding:10px 14px;
+    font-size:12.5px;font-weight:600;color:var(--orange-deep);margin:14px 0}
+  @media print{
+    body.printing header, body.printing nav, body.printing main, body.printing #tape, body.printing #toast{display:none!important}
+    #pvOverlay{position:static;overflow:visible}
+    .pvBar{display:none!important}
+    body{padding-bottom:0!important}
+  }
+  .badge.Good{background:#eef4ee;color:#1e7a3c}
+  .badge.Better{background:#fff3e8;color:var(--orange-deep)}
+  .badge.Best{background:#151310;color:#fff}
+  .badge.PT{background:#eef4ee;color:#1e7a3c}
+  .badge.Composite{background:#151310;color:#fff}
+  .badge.Basic{background:#eef4ee;color:#1e7a3c}
+  .badge.Hardie{background:#151310;color:#fff}
+
+  .note{font-size:13px;color:var(--muted);margin:8px 2px}
+  #toast{
+    position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-80px);
+    background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;
+    font-weight:600;transition:transform .25s;z-index:50;border-left:4px solid var(--orange);
+  }
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion: reduce){ #toast{transition:none} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">KRECK<span>OS</span></div>
+  <div class="sub">Quote + Lead Engine v6.1</div>
+  <div id="connDot">connecting…</div>
+</header>
+<nav>
+  <button class="active" data-s="leads">Leads</button>
+  <button data-s="new">New Quote</button>
+  <button data-s="list">Quotes</button>
+  <button data-s="rates">Rate Card</button>
+</nav>
+
+<main>
+
+  <section id="s-leads" class="screen active">
+    <h2>New lead — 20 seconds, tailgate-proof</h2>
+    <div class="card">
+      <div class="row2">
+        <div><label>First name</label><input id="lFirst" autocomplete="off"></div>
+        <div><label>Last name</label><input id="lLast" autocomplete="off"></div>
+      </div>
+      <div class="row2">
+        <div><label>Phone</label><input id="lPhone" type="tel" inputmode="tel"></div>
+        <div><label>Email</label><input id="lEmail" type="email" inputmode="email"></div>
+      </div>
+      <label>Address</label><input id="lAddr" placeholder="Street address">
+      <div class="row2">
+        <div><label>City</label><input id="lCity"></div>
+        <div><label>Job type</label>
+          <select id="lType"><option>Roofing</option><option>Decking</option><option>Siding</option>
+          <option>Roof Repair</option><option>Custom</option><option>Other</option></select></div>
+      </div>
+      <div class="row2">
+        <div><label>Lead source</label>
+          <select id="lSource"><option>Google</option><option>Referral</option><option>Repeat customer</option>
+          <option>Yard sign</option><option>Website</option><option>Moneypenny</option><option>Other</option></select></div>
+        <div><label>Appointment (optional)</label><input id="lAppt" type="datetime-local"></div>
+      </div>
+      <div class="toggleRow">
+        <span class="tl">🚨 Emergency</span>
+        <label class="switch"><input type="checkbox" id="lEmg"><span class="slider"></span></label>
+      </div>
+      <label>Customer temperature</label>
+      <div class="tempRow">
+        <button class="tempBtn" data-t="🙂">🙂</button>
+        <button class="tempBtn sel" data-t="😐">😐</button>
+        <button class="tempBtn" data-t="😠">😠</button>
+      </div>
+      <label>Note</label><input id="lNote" placeholder="Gate code, dog's name, what they described…">
+      <button class="btn" id="saveLead" style="margin-top:14px">Save lead</button>
+      <p class="note" id="leadMsg"></p>
+    </div>
+
+    <h2>Open leads</h2>
+    <div class="leadTools">
+      <input id="leadSearch" placeholder="Search name, city, phone…">
+    </div>
+    <div class="chipRow" id="leadChips"></div>
+    <div id="leadList"><p class="note">Loading…</p></div>
+    <button class="btn ghost" id="showMore" style="display:none">Show more</button>
+  </section>
+
+  <section id="s-new" class="screen">
+    <div id="leadBannerZone"></div>
+    <h2>Trade</h2>
+    <div class="tradeRow" id="tradeRow"></div>
+
+    <div id="tradeWarn"></div>
+
+    <h2>Customer</h2>
+    <div class="card">
+      <div class="row2">
+        <div><label>First name</label><input id="cFirst" autocomplete="off"></div>
+        <div><label>Last name</label><input id="cLast" autocomplete="off"></div>
+      </div>
+      <div class="row2">
+        <div><label>Phone</label><input id="cPhone" type="tel" inputmode="tel"></div>
+        <div><label>Email</label><input id="cEmail" type="email" inputmode="email"></div>
+      </div>
+      <label>Job address</label><input id="cAddr" placeholder="Street address">
+      <div class="row3">
+        <div><label>City</label><input id="cCity"></div>
+        <div><label>State</label><input id="cState" value="NY"></div>
+        <div><label>Zip</label><input id="cZip" inputmode="numeric"></div>
+      </div>
+      <label>Lead source</label>
+      <select id="cSource">
+        <option>Google</option><option>Referral</option><option>Repeat customer</option>
+        <option>Yard sign</option><option>Website</option><option>Moneypenny</option><option>Other</option>
+      </select>
+    </div>
+
+    <div id="pkgWrap">
+      <h2 id="pkgTitle">Package</h2>
+      <div class="card">
+        <label id="sizeLabel">Size</label>
+        <input id="sizeInput" type="number" inputmode="decimal" placeholder="">
+        <div id="selectZone"></div>
+        <div id="toggleZone"></div>
+        <div class="tierRow" id="tierZone"></div>
+        <p class="note" id="pkgNote"></p>
+      </div>
+    </div>
+
+    <h2 id="addonTitle">Add-ons</h2>
+    <div class="card" id="addonCard"></div>
+
+    <h2>Quote lines</h2>
+    <div id="lines"><p class="note">Nothing yet — tap a package or add-on above.</p></div>
+    <button class="btn ghost" id="addCustom" style="margin-bottom:6px">+ Custom line (one-off charge)</button>
+    <button class="btn ghost" id="addPermit" style="margin-bottom:6px">+ Permit fee (pass-through)</button>
+    <button class="btn ghost" id="pvNewBtn" style="margin-bottom:14px">👁 Preview quote (customer view)</button>
+
+    <div id="phaseWrap" style="display:none">
+      <h2>Payment schedule</h2>
+      <div class="card">
+        <div id="phaseRows"></div>
+        <button class="btn ghost" id="addPhase" style="padding:11px">+ Add payment milestone</button>
+        <p class="note" id="phaseNote"></p>
+      </div>
+    </div>
+
+    <p class="note" id="saveMsg"></p>
+  </section>
+
+  <section id="s-list" class="screen">
+    <h2>Saved quotes</h2>
+    <div class="pipeStats" id="pipeStats"></div>
+    <div class="chipRow" id="chipRow"></div>
+    <div id="qList"><p class="note">Loading…</p></div>
+  </section>
+
+  <section id="s-rates" class="screen">
+    <h2>Kreck rate card</h2>
+    <div id="rateView"></div>
+    <p class="note">Selling prices shown. Cost basis (labor / materials / other) lives inside the app for margin tracking. To change rates, ask Claude for an updated file — two-minute swap.</p>
+  </section>
+
+</main>
+
+<div id="tape">
+  <div class="mainRow">
+    <div class="cell price"><div class="v" id="tPrice">$0</div><div class="k">Quote price</div></div>
+    <div class="cell"><div class="v" id="tCost">$0</div><div class="k">Your cost</div></div>
+    <div class="cell"><div class="v" id="tMargin">—</div><div class="k">Margin</div></div>
+    <button id="tapeSave">Save</button>
+  </div>
+  <div id="tapeSplit">Labor <b>$0</b> · Materials <b>$0</b> · Other <b>$0</b></div>
+</div>
+
+<div id="pvOverlay">
+  <div class="pvBar">
+    <button class="pvClose" id="pvClose">✕ Close</button>
+    <span style="font-size:13px;color:#b7b0a4">Customer view — internal costs hidden</span>
+    <button class="pvPrint" id="pvPrint">🖨 Print / Save PDF</button>
+  </div>
+  <div class="pvPage" id="pvPage"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
+const SB_KEY = "sb_publishable_pxjQJVlvNgBqojzuNcvH5A_wUGT3VwZ";
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+const $ = id => document.getElementById(id);
+const fmt = n => "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt0 = n => "$" + Math.round(Number(n)).toLocaleString("en-US");
+const r2 = n => Math.round(n*100)/100;
+
+/* ================= THE KRECK RATE CARD — SIX TRADES =================
+   price = customer pays. Costs split: L = labor, M = materials, O = other
+   (disposal, warranty registration, pass-throughs). All costs burdened.
+   Sources: order UN77362, 84 Lumber Mountain Top job, QXO Hardie bid
+   727550, Q1 2026 Labor Investment Schedule, Ti's decisions July 2026. */
+const TM_GROUP = {title:"T&M crew — 4-hr minimum · over 6 hrs bills as full day", items:[
+  {name:"2-Man Crew — Day Rate",       price:1440, L:594, M:0, O:0, unit:"day"},
+  {name:"Lead Carpenter — T&M",        price:110,  L:40,  M:0, O:0, unit:"HR"},
+  {name:"Apprentice Carpenter — T&M",  price:70,   L:33,  M:0, O:0, unit:"HR"},
+  {name:"Roofing Technician — T&M",    price:125,  L:50,  M:0, O:0, unit:"HR"},
+  {name:"Master Carpenter — T&M",      price:150,  L:60,  M:0, O:0, unit:"HR"},
+  {name:"T&M materials + 15% handling", matHandling:true,
+   note:"tap, enter materials AT COST — app adds 15%"}
+]};
+
+const TRADES = {
+  Roofing: {
+    sizeLabel:"Roof size (squares)", sizePlaceholder:"e.g. 28",
+    pkgTitle:"Roof package",
+    pkgNote:"Enter squares, flip any toggles, tap a package. The tape tracks your true margin.",
+    packages:[
+      {key:"Good",label:"GOOD",priceLine:"$630/SQ",sub:"Duration Roof<br>2-yr Kreck warranty",
+       name:"GOOD Package — Complete Duration Roof System",price:630,L:120,M:214,O:42.5,unit:"SQ"},
+      {key:"Better",label:"BETTER",priceLine:"$675/SQ",sub:"Full OC System<br>Preferred Protection",
+       name:"BETTER Package — Full OC System Roof",price:675,L:120,M:220,O:50.5,unit:"SQ"},
+      {key:"Best",label:"BEST",priceLine:"$750/SQ",sub:"Platinum Roof<br>Platinum Protection",
+       name:"BEST Package — The Platinum Roof",price:750,L:120,M:226,O:53.5,unit:"SQ"}
+    ],
+    selects:[],
+    toggles:[
+      {id:"tgSteep",label:"Steep pitch (8/12+)",tag:"+$75/SQ",
+       name:"Steep Pitch Upcharge (8/12+)",price:75,L:45,M:0,O:0,unit:"SQ"},
+      {id:"tgLayer",label:"Extra layer to tear off",tag:"+$70/SQ",
+       name:"Additional Layer Tear-Off",price:70,L:42,M:0,O:0,unit:"SQ"}
+    ],
+    addonGroups:[
+      {title:"Roof add-ons", items:[
+        {name:"Skylight — installed complete",price:1750,L:200,M:900,O:0,unit:"EA",note:"Velux unit + flashing + labor"},
+        {name:"Skylight reflash only",price:450,L:140,M:130,O:0,unit:"EA"},
+        {name:"Chimney flashing — standard",price:535,L:171,M:150,O:0,unit:"EA"},
+        {name:"Chimney flashing — copper",price:1535,L:271,M:650,O:0,unit:"EA"},
+        {name:"Chimney cricket / saddle",price:750,L:300,M:150,O:0,unit:"EA",note:"from — adjust per job"},
+        {name:"Plywood replacement",price:110,L:30,M:40,O:0,unit:"sheet"},
+        {name:"Electric mast boot",price:150,L:40,M:20,O:0,unit:"EA"},
+        {name:"Fascia board replacement",price:24,L:7,M:7,O:0,unit:"LF"},
+        {name:"Extra shingle bundles left",price:50,L:0,M:42,O:0,unit:"BDL",note:"first bundle free"},
+        {name:"Flat roof — SAS 2-ply system",price:750,L:150,M:210,O:42,unit:"SQ"}
+      ]}
+    ]
+  },
+  Decking: {
+    sizeLabel:"Deck size (square feet)", sizePlaceholder:"e.g. 432 (12 x 36)",
+    pkgTitle:"Deck package",
+    pkgNote:"Base includes tear-off/demo and 2x10 frame. PT rails included in PT package; fascia included with Composite. Railing upgrades, footings & stairs below.",
+    packages:[
+      {key:"PT",label:"PT DECK",priceLine:"$55/SF",sub:"Tear-off & rebuild<br>PT rails included",
+       name:"PT Deck — Tear-Off & Rebuild (PT rails, 2x10 frame)",price:55,L:13.5,M:13.2,O:1.8,unit:"SF"},
+      {key:"Composite",label:"COMPOSITE",priceLine:"$90/SF",sub:"Trex/TimberTech surface<br>fascia included",
+       name:"Composite Deck — Tear-Off & Rebuild, Trex Surface (fascia incl.)",price:90,L:13.5,M:25.7,O:1.8,unit:"SF"}
+    ],
+    selects:[
+      {id:"selElev",label:"Deck elevation",options:[
+        {label:"Under 6 ft — no upcharge",price:0},
+        {label:"Over 6 ft  (+$10/SF)",price:10,L:3,M:2,O:0,name:"Elevated Deck Upcharge (over 6 ft)",unit:"SF"}
+      ]}
+    ],
+    toggles:[],
+    addonGroups:[
+      {title:"Railing upgrades — per LF, on top of base (stair rail same rate)", items:[
+        {name:"White vinyl railing",price:75,L:12,M:28,O:0,unit:"LF"},
+        {name:"Aluminum railing",price:110,L:15,M:40,O:0,unit:"LF"},
+        {name:"Cable railing",price:225,L:25,M:95,O:0,unit:"LF"},
+        {name:"Composite railing",customLine:true,prename:"Composite railing — [color/scope]",
+         note:"priced per job — tap, then enter LF total price"}
+      ]},
+      {title:"Structure & site", items:[
+        {name:"Stair run",price:2500,L:700,M:500,O:0,unit:"EA",note:"from — stringers & treads"},
+        {name:"Footing — dug & poured",price:350,L:100,M:35,O:0,unit:"hole"},
+        {name:"Rock / ledge encountered",customLine:true,prename:"Rock/ledge work (T&M — price with crew rates)",
+         note:"pure T&M per contract"},
+        {name:"Ledger / band-joist repair",customLine:true,prename:"Ledger/band-joist repair (T&M)",
+         note:"T&M — price with crew rates below"},
+        {name:"Ground prep / grading",customLine:true,prename:"Ground prep & grading (T&M)",
+         note:"gravel, barrier, grading — T&M"},
+        {name:"Deck demo & haul-away only",price:2000,L:800,M:0,O:300,unit:"EA",note:"from — standalone demo"}
+      ]},
+      TM_GROUP
+    ]
+  },
+  Siding: {
+    sizeLabel:"Siding size (squares)", sizePlaceholder:"e.g. 20",
+    pkgTitle:"Siding package",
+    pkgNote:"Basic includes remove & reside with house wrap. Hardie base is walls only — openings, corners, watertable & freezeboard bill as lines below (quote total is the real blended number).",
+    packages:[
+      {key:"Basic",label:"BASIC VINYL",priceLine:"$900/SQ",sub:"Remove & reside<br>house wrap included",
+       name:"BASIC Package — Vinyl Siding, Remove & Reside (house wrap incl.)",price:900,L:250,M:300,O:40,unit:"SQ"},
+      {key:"Hardie",label:"HIGH END HARDIE",priceLine:"$1,600/SQ",sub:"James Hardie system<br>walls — trim itemized",
+       name:"HIGH END Package — James Hardie Siding System (walls)",price:1600,L:650,M:360,O:40,unit:"SQ"}
+    ],
+    selects:[], toggles:[],
+    addonGroups:[
+      {title:"Vinyl-tier add-ons", items:[
+        {name:"Fan fold insulation board",price:35,L:0,M:10,O:0,unit:"SQ",note:"smooths & insulates — offer on every vinyl job"},
+        {name:"Window/door wrap (coil)",price:150,L:40,M:25,O:0,unit:"opening"},
+        {name:"Fascia (aluminum)",price:15,L:5,M:2.7,O:0,unit:"LF"},
+        {name:"Soffit (vinyl)",price:15,L:5,M:2.7,O:0,unit:"LF"},
+        {name:"Porch ceiling",price:900,L:250,M:300,O:40,unit:"SQ"},
+        {name:"Gutter reset (existing gutters)",price:800,L:350,M:0,O:0,unit:"EA",note:"no warranty on aged gutters"}
+      ]},
+      {title:"Hardie-tier trim (Azek)", items:[
+        {name:"Window surround — Azek",price:275,L:0,M:125,O:0,unit:"EA",note:"labor in sub rate"},
+        {name:"Door surround — Azek",price:350,L:0,M:185,O:0,unit:"EA"},
+        {name:"Azek outside corners",customLine:true,prename:"Azek outside corners — [LF]",note:"price per job pending stick quote"},
+        {name:"Azek watertable",customLine:true,prename:"Azek watertable — [LF]",note:"price per job"},
+        {name:"Azek freezeboard / rakes",customLine:true,prename:"Azek freezeboard & rakes — [LF]",note:"price per job"}
+      ]},
+      {title:"Site & surprises", items:[
+        {name:"Concealed sheathing repair",customLine:true,prename:"Sheathing/hidden condition repair (T&M)",
+         note:"per contract — T&M"},
+      ]},
+      TM_GROUP
+    ]
+  },
+  Custom: {
+    noBuilder:true, phasing:true,
+    addonTitle:"Quick add",
+    warn:"",
+    addonGroups:[
+      {title:"Build the estimate line by line — every line takes a price and an optional cost", items:[
+        {name:"Blank estimate line",customLine:true,prename:"",note:"description, qty, price, cost"},
+      ]},
+      TM_GROUP
+    ]
+  },
+  Repair: {
+    noBuilder:true,
+    warn:"ALL REPAIR WORK IS NO-WARRANTY per Kreck contract terms — repairs on existing roofs are best-efforts. Make sure the customer signs the repair terms.",
+    addonGroups:[
+      {title:"Roof repair", items:[
+        {name:"Service call / repair minimum",price:550,L:200,M:50,O:0,unit:"EA",note:"includes $50 in materials"},
+        {name:"Leak investigation & repair",customLine:true,prename:"Leak investigation & repair — [describe]",note:"blank line — price per job"},
+        {name:"Shingle / flashing repair",customLine:true,prename:"Repair — [describe]",note:"blank line"},
+        {name:"Emergency tarp / dry-in",customLine:true,prename:"Emergency tarp & dry-in",note:"blank line"}
+      ]},
+      TM_GROUP
+    ]
+  },
+  "T&M": {
+    noBuilder:true,
+    warn:"",
+    addonGroups:[ TM_GROUP,
+      {title:"Notes", items:[
+        {name:"Site / scope note line",customLine:true,prename:"",note:"blank line for anything else"}
+      ]}
+    ]
+  }
+};
+
+let currentTrade = "Roofing";
+let lines = [];
+let currentTier = null;
+let phases = [];
+
+/* ============ TABS ============ */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    $("s-"+b.dataset.s).classList.add("active");
+    if(b.dataset.s==="list") loadQuotes();
+    if(b.dataset.s==="leads") loadLeads();
+  });
+});
+
+/* ============ LEAD SYSTEM ============ */
+let leadTemp = "😐";
+let leadsCache = [];
+let openLeadId = null;
+let pendingLead = null; /* set when quoting an existing lead */
+
+document.querySelectorAll(".tempBtn").forEach(b=>b.addEventListener("click",e=>{
+  e.preventDefault();
+  leadTemp=b.dataset.t;
+  document.querySelectorAll(".tempBtn").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel");
+}));
+
+$("saveLead").addEventListener("click", async ()=>{
+  const first=$("lFirst").value.trim(), last=$("lLast").value.trim();
+  if(!first && !last){ toast("Enter at least a name"); return; }
+  const btn=$("saveLead"); btn.disabled=true; btn.textContent="Saving…";
+  try{
+    const {data:cust,error:e1} = await db.from("customers").insert({
+      first_name:first||"—",last_name:last||"—",
+      phone:$("lPhone").value.trim()||null,email:$("lEmail").value.trim()||null,
+      street_address:$("lAddr").value.trim()||null,city:$("lCity").value.trim()||null,
+      state:"NY",lead_source:$("lSource").value
+    }).select().single();
+    if(e1) throw e1;
+    const appt=$("lAppt").value ? new Date($("lAppt").value).toISOString() : null;
+    const {error:e2} = await db.from("jobs").insert({
+      customer_id:cust.id,job_type:$("lType").value,status:"Lead",
+      street_address:$("lAddr").value.trim()||null,city:$("lCity").value.trim()||null,state:"NY",
+      appointment:appt,temperature:leadTemp,emergency:$("lEmg").checked,
+      notes:$("lNote").value.trim()||null
+    });
+    if(e2) throw e2;
+    toast("Lead saved"+($("lEmg").checked?" — 🚨 flagged":""));
+    $("leadMsg").textContent="Lead saved. It's in the list below — tap it for Add to Calendar and Start Quote.";
+    ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt"].forEach(id=>$(id).value="");
+    $("lEmg").checked=false; leadTemp="😐";
+    document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="😐"));
+    loadLeads();
+  }catch(err){
+    console.error(err);
+    $("leadMsg").textContent="Save failed: "+(err.message||"unknown")+". If it mentions a missing column, run the wave-two SQL in Supabase first.";
+  }
+  btn.disabled=false; btn.textContent="Save lead";
+});
+
+let leadFilter="Open";
+let leadLimit=15;
+async function loadLeads(){
+  $("leadList").innerHTML='<p class="note">Loading…</p>';
+  const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : ["Lead","Lost"];
+  const {data,error} = await db.from("jobs")
+    .select("id,job_type,status,appointment,temperature,emergency,notes,created_at,street_address,city,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
+    .in("status",statuses).order("created_at",{ascending:false}).limit(500);
+  if(error){ $("leadList").innerHTML='<p class="note">Could not load leads: '+error.message+'. If it mentions a missing column, run the wave-two SQL first.</p>'; return; }
+  leadsCache=(data||[]).sort((a,b)=>{
+    if(a.emergency!==b.emergency) return a.emergency?-1:1;
+    if(a.appointment&&b.appointment) return new Date(a.appointment)-new Date(b.appointment);
+    if(a.appointment) return -1;
+    if(b.appointment) return 1;
+    return new Date(b.created_at)-new Date(a.created_at);
+  });
+  renderLeadChips();
+  renderLeads();
+}
+function renderLeadChips(){
+  $("leadChips").innerHTML=["Open","Lost","All"].map(o=>
+    `<button class="chip ${leadFilter===o?'sel':''}" data-lf="${o}">${o}</button>`).join("");
+  document.querySelectorAll("[data-lf]").forEach(c=>c.addEventListener("click",()=>{
+    leadFilter=c.dataset.lf; leadLimit=15; openLeadId=null; loadLeads();
+  }));
+}
+function leadMatches(l,q){
+  if(!q) return true;
+  const cu=l.customers||{};
+  const hay=((cu.first_name||"")+" "+(cu.last_name||"")+" "+(l.city||"")+" "+(cu.phone||"")+" "+(l.street_address||"")).toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+function renderLeads(){
+  const q=$("leadSearch").value.trim();
+  const filtered=leadsCache.filter(l=>leadMatches(l,q));
+  if(!filtered.length){ $("leadList").innerHTML='<p class="note">'+(q?"No leads match that search.":"No "+leadFilter.toLowerCase()+" leads. The phone will fix that.")+'</p>'; $("showMore").style.display="none"; return; }
+  const shown=filtered.slice(0,leadLimit);
+  $("showMore").style.display = filtered.length>leadLimit ? "block" : "none";
+  $("showMore").textContent = "Show more ("+(filtered.length-leadLimit)+" remaining)";
+  $("leadList").innerHTML = shown.map(l=>{
+    const cu=l.customers||{};
+    const who=(cu.first_name||"")+" "+(cu.last_name||"");
+    const appt=l.appointment?new Date(l.appointment).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):null;
+    const open=l.id===openLeadId;
+    let detail="";
+    if(open){
+      const contact=[cu.phone,cu.email].filter(Boolean).join(" · ");
+      detail=`<div class="leadDetail">
+        ${contact?`<div class="dMeta">${contact}</div>`:""}
+        ${l.street_address?`<div class="dMeta">${l.street_address}${l.city?", "+l.city:""}</div>`:""}
+        <div class="dMeta">Source: ${cu.lead_source||"—"} · Temp: ${l.temperature||"😐"}${l.emergency?" · 🚨 EMERGENCY":""}</div>
+        ${l.notes?`<div class="dMeta">"${l.notes}"</div>`:""}
+        <div class="actRow">
+          ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">📅 Add to Calendar</button>`:""}
+          ${l.status==="Lead"?`<button class="actBtn" data-quote="${l.id}">Start Quote →</button>
+          <button class="actBtn gray" data-lost="${l.id}">Mark Lost</button>`
+          :`<button class="actBtn" data-reopen="${l.id}">Reopen lead</button>`}
+        </div>
+      </div>`;
+    }
+    return `<div class="leadRow ${l.emergency?'emg':''}" data-lead="${l.id}">
+      <div><div class="who">${l.emergency?"🚨 ":""}${who}</div>
+      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}</div></div>
+      <div class="temp">${l.temperature||"😐"}</div>
+    </div>${detail}`;
+  }).join("");
+  document.querySelectorAll(".leadRow").forEach(r=>r.addEventListener("click",()=>{
+    openLeadId = (openLeadId===r.dataset.lead)?null:r.dataset.lead;
+    renderLeads();
+  }));
+  document.querySelectorAll("[data-ics]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); downloadIcs(leadsCache.find(x=>x.id===b.dataset.ics));
+  }));
+  document.querySelectorAll("[data-quote]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); startQuoteFromLead(leadsCache.find(x=>x.id===b.dataset.quote));
+  }));
+  document.querySelectorAll("[data-lost]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const {error}=await db.from("jobs").update({status:"Lost"}).eq("id",b.dataset.lost);
+    if(error){ toast("Update failed"); return; }
+    toast("Marked lost — they stay on the email list");
+    loadLeads();
+  }));
+  document.querySelectorAll("[data-reopen]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const {error}=await db.from("jobs").update({status:"Lead"}).eq("id",b.dataset.reopen);
+    if(error){ toast("Update failed"); return; }
+    toast("Lead reopened");
+    loadLeads();
+  }));
+}
+$("leadSearch").addEventListener("input",()=>{ leadLimit=15; renderLeads(); });
+$("showMore").addEventListener("click",()=>{ leadLimit+=25; renderLeads(); });
+function icsEscape(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function icsDate(d){ return d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); }
+function downloadIcs(l){
+  if(!l||!l.appointment) return;
+  const cu=l.customers||{};
+  const start=new Date(l.appointment);
+  const end=new Date(start.getTime()+60*60*1000);
+  const who=(cu.first_name||"")+" "+(cu.last_name||"");
+  const loc=[l.street_address,l.city,"NY"].filter(Boolean).join(", ");
+  const desc=[cu.phone?"Phone: "+cu.phone:"",cu.lead_source?"Source: "+cu.lead_source:"",
+    "Temp: "+(l.temperature||"😐"),l.emergency?"🚨 EMERGENCY":"",l.notes||""].filter(Boolean).join("\\n");
+  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KRECK OS//EN","BEGIN:VEVENT",
+    "UID:"+l.id+"@kreckos","DTSTAMP:"+icsDate(new Date()),
+    "DTSTART:"+icsDate(start),"DTEND:"+icsDate(end),
+    "SUMMARY:"+icsEscape("Estimate — "+who+" ("+(l.job_type||"")+")"),
+    loc?"LOCATION:"+icsEscape(loc):"",
+    "DESCRIPTION:"+desc,
+    "END:VEVENT","END:VCALENDAR"].filter(Boolean).join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));
+  a.download="kreck-appointment.ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  toast("Opening calendar event — tap Add");
+}
+function startQuoteFromLead(l){
+  if(!l) return;
+  const cu=l.customers||{};
+  pendingLead={jobId:l.id, customerId:cu.id, name:(cu.first_name||"")+" "+(cu.last_name||"")};
+  $("cFirst").value=cu.first_name||""; $("cLast").value=cu.last_name||"";
+  $("cPhone").value=cu.phone||""; $("cEmail").value=cu.email||"";
+  $("cAddr").value=l.street_address||""; $("cCity").value=l.city||"";
+  if(cu.lead_source) $("cSource").value=cu.lead_source;
+  if(TRADES[l.job_type]) { currentTrade=l.job_type; renderTrades(); renderBuilder(); }
+  renderLeadBanner();
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+  document.querySelector('nav button[data-s="new"]').classList.add("active");
+  document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+  $("s-new").classList.add("active");
+  window.scrollTo(0,0);
+  toast("Quoting "+pendingLead.name+" — saves to their lead");
+}
+function renderLeadBanner(){
+  $("leadBannerZone").innerHTML = pendingLead
+    ? `<div class="leadBanner"><span>Quoting lead: <b>${pendingLead.name}</b> — save will update their record, no duplicate.</span>
+       <button id="cancelLead">✕ detach</button></div>` : "";
+  const cl=$("cancelLead");
+  if(cl) cl.addEventListener("click",()=>{ pendingLead=null; renderLeadBanner(); toast("Detached — save will create a fresh customer"); });
+}
+
+/* ============ CUSTOMER-FACING PREVIEW ============ */
+const TIER_BLURBS = {
+  Good:"Includes the Owens Corning® Standard Product Limited Warranty and a 2-Year Kreck Contracting workmanship warranty.",
+  Better:"Includes a registered Owens Corning® Preferred Protection Limited Warranty — extended system coverage with manufacturer workmanship protection — plus the Kreck Contracting 2-Year workmanship warranty.",
+  Best:"Includes a registered Owens Corning® Platinum Protection Limited Warranty — 50-year material and manufacturer-backed workmanship coverage, available from fewer than 1% of roofing contractors nationwide — plus the Kreck Contracting 2-Year workmanship warranty.",
+  PT:"Includes pressure-treated railing system and the Kreck Contracting 2-Year workmanship warranty.",
+  Composite:"Includes composite fascia and the Kreck Contracting 2-Year workmanship warranty.",
+  Basic:"Includes full removal and residing with house wrap, and the Kreck Contracting 2-Year workmanship warranty.",
+  Hardie:"A complete James Hardie® fiber cement siding system installed to manufacturer specification, with the Kreck Contracting 2-Year workmanship warranty."
+};
+function showPreview(m){
+  const today=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  const valid=m.validUntil?new Date(m.validUntil+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):null;
+  const rows=m.lines.map(l=>`
+    <tr><td>${l.name}</td><td>${l.qty} ${l.unit||""}</td><td>${fmt(l.qty*l.price)}</td></tr>`).join("");
+  const phasing=(m.phasing&&m.phasing.length)?`
+    <div class="pvBlock"><div class="bh">Payment schedule</div>
+    ${m.phasing.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0">
+      <span>${p.label}</span><span style="font-weight:700">${p.pct}% — ${fmt0(m.total*p.pct/100)}</span></div>`).join("")}</div>`:"";
+  const warn=m.isRepair?`<div class="pvWarn">Repair work is performed on a best-efforts basis and carries no warranty,
+    per Kreck Contracting repair terms. Repairs are not guaranteed to stop any leak or extend the life of the roofing system.</div>`:"";
+  const blurb=TIER_BLURBS[m.tier]||"";
+  $("pvPage").innerHTML=`
+    <div class="pvHead">
+      <div class="pvBrand">KRECK<span>CONTRACTING</span><span class="tag">BUILD OUTSIDE THE BOX</span></div>
+      <div class="pvCo">80 E. Main Street<br>Port Jervis, NY 12771<br>ti@kreckcontracting.com<br>845-667-0586</div>
+    </div>
+    <div class="pvTitle">${m.jobType||"Project"} Quote ${m.qNum?("· "+m.qNum):"· DRAFT"}</div>
+    <div class="pvSub">${today}${valid?" · Valid until "+valid:""}</div>
+    <div class="pvBlock"><div class="bh">Prepared for</div>
+      <div style="font-weight:700;font-size:16px">${m.customer.name}</div>
+      <div style="font-size:13.5px;color:#5a544b">${[m.customer.addr,m.customer.city].filter(Boolean).join(", ")}
+      ${m.customer.phone?"<br>"+m.customer.phone:""}${m.customer.email?" · "+m.customer.email:""}</div></div>
+    ${blurb?`<div class="pvBlock"><div class="bh">Your package</div><div style="font-size:13.5px;line-height:1.55">${blurb}</div></div>`:""}
+    <table class="pvTable"><tr><th>Description</th><th>Qty</th><th>Amount</th></tr>${rows}</table>
+    <div class="pvTotal"><span>Total</span><span>${fmt(m.total)}</span></div>
+    ${phasing}${warn}
+    <div class="pvFine">
+      Award-winning craftsmanship · Owens Corning Platinum Preferred Contractor · Fully insured, $2,000,000 liability coverage.
+      This quote is subject to Kreck Contracting contract terms and conditions, provided with your agreement.
+      Thank you for the opportunity to earn your business — we build outside the box, and we stand behind every job.
+    </div>`;
+  $("pvOverlay").classList.add("on");
+  window.scrollTo(0,0);
+}
+$("pvClose").addEventListener("click",()=>$("pvOverlay").classList.remove("on"));
+$("pvPrint").addEventListener("click",()=>{
+  document.body.classList.add("printing");
+  setTimeout(()=>{ window.print(); document.body.classList.remove("printing"); },50);
+});
+$("pvNewBtn").addEventListener("click",()=>{
+  if(!lines.length){ toast("Add lines to the quote first"); return; }
+  const t=totals();
+  const tradeName = tr => tr==="Repair" ? "Roof Repair" : tr;
+  const pkgTrades=[...new Set(lines.filter(l=>l.trade).map(l=>l.trade))];
+  showPreview({
+    qNum:null,
+    jobType:pkgTrades.length>1?pkgTrades.map(tradeName).join(" + "):tradeName(pkgTrades[0]||currentTrade),
+    tier:currentTier,
+    customer:{name:(($("cFirst").value+" "+$("cLast").value).trim()||"Customer"),
+      phone:$("cPhone").value.trim(),email:$("cEmail").value.trim(),
+      addr:$("cAddr").value.trim(),city:$("cCity").value.trim()},
+    lines:lines.map(l=>({name:l.name||"—",qty:l.qty,unit:l.unit,price:l.price})),
+    total:t.price,
+    phasing:TRADES[currentTrade].phasing?phases:null,
+    isRepair:currentTrade==="Repair",
+    validUntil:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
+  });
+});
+
+let toastTimer;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* ============ CONNECTION ============ */
+(async ()=>{
+  const {error} = await db.from("quotes").select("id",{head:true,count:"exact"});
+  const dot=$("connDot");
+  if(error){ dot.className="err"; dot.textContent="offline"; }
+  else { dot.className="on"; dot.textContent="connected"; }
+})();
+
+/* ============ TRADE SELECTOR ============ */
+function renderTrades(){
+  $("tradeRow").innerHTML = Object.keys(TRADES).map(t=>
+    `<button class="tradeBtn ${t===currentTrade?'sel':''}" data-t="${t}">${t}</button>`).join("");
+  document.querySelectorAll(".tradeBtn").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.t===currentTrade) return;
+    currentTrade = b.dataset.t;
+    currentTier = null;
+    /* lines from other trades stay — one quote can carry roof + siding + more */
+    renderTrades(); renderBuilder(); renderLines(); renderPhasing();
+    toast(currentTrade+" mode — existing lines kept");
+  }));
+}
+
+/* ============ BUILDER ============ */
+function renderBuilder(){
+  const T = TRADES[currentTrade];
+  $("tradeWarn").innerHTML = T.warn ? `<div class="warnNote">⚠️ ${T.warn}</div>` : "";
+  $("addonTitle").textContent = T.addonTitle || "Add-ons";
+  if(T.noBuilder){ $("pkgWrap").style.display="none"; renderAddons(); return; }
+  $("pkgWrap").style.display="block";
+  $("pkgTitle").textContent = T.pkgTitle;
+  $("sizeLabel").textContent = T.sizeLabel;
+  $("sizeInput").placeholder = T.sizePlaceholder;
+  $("pkgNote").textContent = T.pkgNote;
+
+  $("selectZone").innerHTML = (T.selects||[]).map(s=>`
+    <label>${s.label}</label>
+    <select id="${s.id}">${s.options.map((o,i)=>`<option value="${i}">${o.label}</option>`).join("")}</select>
+  `).join("");
+
+  $("toggleZone").innerHTML = (T.toggles||[]).map(tg=>`
+    <div class="toggleRow">
+      <span class="tl">${tg.label} &nbsp;<span style="color:var(--muted);font-weight:400">${tg.tag}</span></span>
+      <label class="switch"><input type="checkbox" id="${tg.id}"><span class="slider"></span></label>
+    </div>`).join("");
+
+  const tz = $("tierZone");
+  tz.className = "tierRow n"+T.packages.length;
+  tz.innerHTML = T.packages.map(p=>`
+    <div class="tierBtn" data-key="${p.key}">
+      <div class="t1">${p.label}</div><div class="t2">${p.priceLine}</div>
+      <div class="t3">${p.sub}</div>
+    </div>`).join("");
+  document.querySelectorAll(".tierBtn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const size = Number($("sizeInput").value);
+      if(!size || size<=0){ toast("Enter the size first"); return; }
+      const p = T.packages.find(x=>x.key===btn.dataset.key);
+      /* replace only THIS trade's package/toggle/select lines — other trades' lines stay */
+      lines = lines.filter(l=>!( (l.isPackage||l.isToggle||l.isSelect) && l.trade===currentTrade ));
+      lines.unshift({name:p.name,unit:p.unit,qty:size,price:p.price,L:p.L,M:p.M,O:p.O,isPackage:true,trade:currentTrade});
+      (T.toggles||[]).forEach(tg=>{
+        if($(tg.id) && $(tg.id).checked)
+          lines.push({name:tg.name,unit:tg.unit,qty:size,price:tg.price,L:tg.L,M:tg.M,O:tg.O,isToggle:true,trade:currentTrade});
+      });
+      (T.selects||[]).forEach(s=>{
+        const opt = s.options[Number($(s.id).value)||0];
+        if(opt && opt.price>0)
+          lines.push({name:opt.name,unit:opt.unit,qty:size,price:opt.price,L:opt.L||0,M:opt.M||0,O:opt.O||0,isSelect:true,trade:currentTrade});
+      });
+      currentTier = p.key;
+      document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
+      btn.classList.add("sel");
+      renderLines();
+      toast(p.label+" — "+size+" "+p.unit+" loaded");
+    });
+  });
+  renderAddons();
+}
+
+/* ============ ADD-ONS ============ */
+function renderAddons(){
+  const T = TRADES[currentTrade];
+  $("addonCard").innerHTML = T.addonGroups.map((g,gi)=>`
+    <div class="grpTitle">${g.title}</div>
+    <div class="addonGrid">
+      ${g.items.map((a,i)=>`
+        <button class="addonBtn" data-g="${gi}" data-i="${i}">
+          <div class="an">${a.name||"Blank line"}</div>
+          <div class="ap">${a.price!=null ? fmt0(a.price)+(a.unit&&a.unit!=="EA"?" / "+a.unit:"") : "custom"}${a.note?` · <span style="color:var(--muted);font-weight:400">${a.note}</span>`:""}</div>
+        </button>`).join("")}
+    </div>`).join("");
+  document.querySelectorAll(".addonBtn").forEach(b=>b.addEventListener("click",()=>{
+    const a = TRADES[currentTrade].addonGroups[b.dataset.g].items[b.dataset.i];
+    if(a.matHandling){
+      lines.push({name:"T&M materials (cost + 15% handling)",unit:"EA",qty:1,
+                  price:0,L:0,M:0,O:0,isCustom:true,matHandling:true});
+      renderLines(); toast("Enter the materials cost — 15% adds automatically"); return;
+    }
+    if(a.customLine){
+      lines.push({name:a.prename||"",unit:"EA",qty:1,price:0,L:0,M:0,O:0,isCustom:true});
+      renderLines(); toast("Line added — set the price"+(currentTrade==="Custom"?" and cost":"")); return;
+    }
+    const existing = lines.find(l=>l.name===a.name && !l.isCustom);
+    if(existing){ existing.qty = r2(existing.qty+1); }
+    else lines.push({name:a.name,unit:a.unit,qty:1,price:a.price,L:a.L,M:a.M,O:a.O});
+    renderLines(); toast(a.name+" added");
+  }));
+}
+
+/* ============ CUSTOM & PERMIT ============ */
+$("addCustom").addEventListener("click",()=>{
+  lines.push({name:"",unit:"EA",qty:1,price:0,L:0,M:0,O:0,isCustom:true});
+  renderLines();
+});
+$("addPermit").addEventListener("click",()=>{
+  lines.push({name:"Permit & filing fee (pass-through at cost)",unit:"EA",qty:1,
+              price:0,L:0,M:0,O:0,isCustom:true,passthrough:true});
+  renderLines(); toast("Permit line added — enter the town's fee");
+});
+
+/* ============ LINES ============ */
+function lineCost(l){ return (l.L||0)+(l.M||0)+(l.O||0); }
+function renderLines(){
+  const sy = window.scrollY; /* hold scroll position through re-render */
+  if(!lines.length){
+    $("lines").innerHTML='<p class="note">Nothing yet — tap a package or add-on above.</p>';
+    updateTape(); window.scrollTo(0,sy); return;
+  }
+  $("lines").innerHTML = lines.map((l,i)=>{
+    const priceField = l.matHandling
+      ? `<span style="font-size:13px;color:var(--muted)">cost $</span><input class="cPrice" data-i="${i}" type="number" inputmode="decimal" value="${l.M||''}" placeholder="materials at cost" style="width:130px;padding:8px;font-weight:700">`
+      : l.isCustom
+        ? `<span style="font-size:13px;color:var(--muted)">$</span><input class="cPrice" data-i="${i}" type="number" inputmode="decimal" value="${l.price}" style="width:100px;padding:8px;font-weight:700">
+           ${l.passthrough?"":`<span style="font-size:12px;color:var(--muted)">cost</span><input class="cCost" data-i="${i}" type="number" inputmode="decimal" value="${l.userCost!=null?l.userCost:''}" placeholder="opt." style="width:80px;padding:8px">`}`
+        : `<span style="font-size:13px;color:var(--muted)">@ ${fmt0(l.price)}/${l.unit}</span>`;
+    return `
+    <div class="li">
+      <div class="top">
+        ${l.isCustom && !l.matHandling
+          ? `<input placeholder="${l.passthrough?'Permit fee':'Describe the charge'}" data-i="${i}" class="cName" value="${(l.name||'').replace(/"/g,'&quot;')}" style="font-weight:700;flex:1">`
+          : `<span class="nm">${l.name}</span>`}
+        <button class="rm" data-i="${i}">Remove</button>
+      </div>
+      <div class="ctl">
+        <button class="step" data-i="${i}" data-d="-1">−</button>
+        <input class="qty" data-i="${i}" type="number" inputmode="decimal" value="${l.qty}">
+        <button class="step" data-i="${i}" data-d="1">+</button>
+        <span class="unit">${l.unit}</span>
+        ${priceField}
+        <span class="lineTotal">${fmt(l.qty*l.price)}</span>
+      </div>
+      ${l.matHandling && l.M>0 ? `<div class="hint">cost ${fmt(l.M)} + 15% handling = ${fmt(l.price)} billed</div>`:""}
+      ${l.isCustom && !l.matHandling && !l.passthrough && l.userCost==null && l.price>0 ? `<div class="hint">no cost entered — margin estimated at 60% of price</div>`:""}
+    </div>`;}).join("");
+  document.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>{
+    const l=lines[b.dataset.i];
+    if(l.isPackage){ currentTier=null; document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel")); }
+    lines.splice(b.dataset.i,1); renderLines();
+  }));
+  document.querySelectorAll(".step").forEach(b=>b.addEventListener("click",()=>{
+    const l=lines[b.dataset.i]; l.qty=Math.max(0.5, r2(l.qty+Number(b.dataset.d)));
+    renderLines();
+  }));
+  document.querySelectorAll(".qty").forEach(inp=>inp.addEventListener("change",()=>{
+    lines[inp.dataset.i].qty=Math.max(0,Number(inp.value)||0); renderLines();
+  }));
+  document.querySelectorAll(".cName").forEach(inp=>inp.addEventListener("input",()=>{
+    lines[inp.dataset.i].name=inp.value;
+  }));
+  document.querySelectorAll(".cPrice").forEach(inp=>inp.addEventListener("change",()=>{
+    const l=lines[inp.dataset.i];
+    const v = Number(inp.value)||0;
+    if(l.matHandling){ l.M=v; l.L=0; l.O=0; l.price=r2(v*1.15); }
+    else if(l.passthrough){ l.price=v; l.O=v; l.L=0; l.M=0; }
+    else {
+      l.price=v;
+      if(l.userCost==null){ l.O=r2(v*0.6); l.L=0; l.M=0; }
+    }
+    renderLines();
+  }));
+  document.querySelectorAll(".cCost").forEach(inp=>inp.addEventListener("change",()=>{
+    const l=lines[inp.dataset.i];
+    const v = inp.value===""?null:Number(inp.value)||0;
+    l.userCost=v;
+    if(v!=null){ l.O=v; l.L=0; l.M=0; }
+    else { l.O=r2((l.price||0)*0.6); }
+    renderLines();
+  }));
+  updateTape();
+  renderPhasing();
+  window.scrollTo(0,sy);
+}
+
+/* ============ TAPE ============ */
+function totals(){
+  const price = lines.reduce((s,l)=>s+l.qty*l.price,0);
+  const L = lines.reduce((s,l)=>s+l.qty*(l.L||0),0);
+  const M = lines.reduce((s,l)=>s+l.qty*(l.M||0),0);
+  const O = lines.reduce((s,l)=>s+l.qty*(l.O||0),0);
+  const cost = L+M+O;
+  const margin = price>0 ? (price-cost)/price*100 : null;
+  return {price,cost,L,M,O,margin};
+}
+function updateTape(){
+  const t=totals();
+  $("tPrice").textContent=fmt0(t.price);
+  $("tCost").textContent=fmt0(t.cost);
+  $("tMargin").textContent = t.margin===null ? "—" : t.margin.toFixed(1)+"%";
+  $("tapeSplit").innerHTML = `Labor <b>${fmt0(t.L)}</b> · Materials <b>${fmt0(t.M)}</b> · Other <b>${fmt0(t.O)}</b>`;
+}
+
+/* ============ PAYMENT PHASING (Custom trade) ============ */
+function defaultPhases(){ return [
+  {label:"Deposit at signing",pct:50},
+  {label:"Rough completion",pct:40},
+  {label:"Final completion",pct:10}
+];}
+function renderPhasing(){
+  const T = TRADES[currentTrade];
+  if(!T.phasing){ $("phaseWrap").style.display="none"; return; }
+  $("phaseWrap").style.display="block";
+  if(!phases.length) phases = defaultPhases();
+  const total = totals().price;
+  $("phaseRows").innerHTML = phases.map((p,i)=>`
+    <div class="phRow">
+      <input class="phL" data-i="${i}" value="${p.label.replace(/"/g,'&quot;')}">
+      <input class="phP" data-i="${i}" type="number" inputmode="decimal" value="${p.pct}">
+      <div class="phAmt">${fmt0(total*p.pct/100)}</div>
+      <button class="phDel" data-i="${i}">✕</button>
+    </div>`).join("");
+  const sum = phases.reduce((s,p)=>s+Number(p.pct||0),0);
+  $("phaseNote").textContent = "Milestone percentages total "+sum+"%"+(sum!==100?" — adjust to reach 100%":" ✓")+". Schedule saves with the quote.";
+  document.querySelectorAll(".phL").forEach(inp=>inp.addEventListener("input",()=>{phases[inp.dataset.i].label=inp.value;}));
+  document.querySelectorAll(".phP").forEach(inp=>inp.addEventListener("change",()=>{phases[inp.dataset.i].pct=Number(inp.value)||0;renderPhasing();}));
+  document.querySelectorAll(".phDel").forEach(b=>b.addEventListener("click",()=>{phases.splice(b.dataset.i,1);renderPhasing();}));
+}
+$("addPhase").addEventListener("click",()=>{phases.push({label:"Milestone",pct:0});renderPhasing();});
+
+/* ============ RATE CARD TAB ============ */
+function renderRates(){
+  $("rateView").innerHTML = Object.entries(TRADES).map(([trade,T])=>{
+    const pk = (T.packages||[]).map(p=>`
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+        <span><strong>${p.label}</strong></span><span style="font-weight:700">${p.priceLine}</span>
+      </div>`).join("");
+    const tg = (T.toggles||[]).map(t=>`
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+        <span>${t.label}</span><span style="font-weight:700">${t.tag}</span>
+      </div>`).join("");
+    const sel = (T.selects||[]).map(s=>s.options.filter(o=>o.price>0).map(o=>`
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+        <span>${o.name}</span><span style="font-weight:700">+${fmt0(o.price)}/${o.unit}</span>
+      </div>`).join("")).join("");
+    const groups = T.addonGroups.map(g=>`
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);letter-spacing:.08em;font-weight:700;text-transform:uppercase">${g.title}</div>
+      ${g.items.map(a=>`
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+          <span>${a.name||"Blank line"}${a.note?` <span style="color:var(--muted);font-size:12px">(${a.note})</span>`:""}</span>
+          <span style="font-weight:700">${a.price!=null?fmt0(a.price)+(a.unit&&a.unit!=="EA"?"/"+a.unit:""):"custom"}</span>
+        </div>`).join("")}`).join("");
+    return `<div class="card"><strong style="font-size:16px">${trade}</strong>${pk}${tg}${sel}${groups}</div>`;
+  }).join("") + `<div class="card"><strong>Permits (all trades)</strong>
+      <div style="padding:9px 0">Pass-through at the town's cost — facilitation included free.</div></div>
+    <div class="card"><strong>T&M materials</strong>
+      <div style="padding:9px 0">Billed at cost plus 15% handling — procurement, delivery coordination, and material warranty support.</div></div>`;
+}
+
+/* ============ SAVE ============ */
+async function saveQuote(){
+  const first=$("cFirst").value.trim(), last=$("cLast").value.trim();
+  if(!first||!last){ toast("Enter the customer's name first"); return; }
+  if(!lines.length){ toast("Add at least one line"); return; }
+  const unnamed = lines.find(l=>l.isCustom && !l.matHandling && !l.name.trim());
+  if(unnamed){ toast("Describe your custom charge before saving"); return; }
+  const btn=$("tapeSave"); btn.disabled=true; btn.textContent="Saving…";
+  try{
+    let cust;
+    if(pendingLead){
+      cust={id:pendingLead.customerId};
+    } else {
+      const {data,error:e1} = await db.from("customers").insert({
+        first_name:first,last_name:last,phone:$("cPhone").value.trim()||null,
+        email:$("cEmail").value.trim()||null,
+        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
+        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
+        lead_source:$("cSource").value
+      }).select().single();
+      if(e1) throw e1;
+      cust=data;
+    }
+    /* job type reflects every trade with a package on this quote */
+    const tradeName = t => t==="Repair" ? "Roof Repair" : t;
+    const pkgTrades = [...new Set(lines.filter(l=>l.trade).map(l=>l.trade))];
+    const jobType = pkgTrades.length>1 ? pkgTrades.map(tradeName).join(" + ")
+                  : tradeName(pkgTrades[0]||currentTrade);
+    let job;
+    if(pendingLead){
+      const {data,error:e2} = await db.from("jobs").update({
+        job_type:jobType,status:"Quoted",
+        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null
+      }).eq("id",pendingLead.jobId).select().single();
+      if(e2) throw e2;
+      job=data;
+    } else {
+      const {data,error:e2} = await db.from("jobs").insert({
+        customer_id:cust.id,job_type:jobType,status:"Quoted",
+        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
+        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null
+      }).select().single();
+      if(e2) throw e2;
+      job=data;
+    }
+    const {count} = await db.from("quotes").select("*",{count:"exact",head:true});
+    const qNum = "Q-"+new Date().getFullYear()+"-"+String((count||0)+1).padStart(3,"0");
+    const t=totals();
+    let notes = "trade:"+currentTrade
+      +";cost:"+t.cost.toFixed(2)
+      +";L:"+t.L.toFixed(2)+";M:"+t.M.toFixed(2)+";O:"+t.O.toFixed(2)
+      +";margin:"+(t.margin?t.margin.toFixed(1):"0");
+    if(TRADES[currentTrade].phasing && phases.length){
+      notes += ";phasing:"+phases.map(p=>p.pct+"% "+p.label).join(" / ");
+    }
+    if(currentTrade==="Repair"){ notes += ";NO-WARRANTY repair terms apply"; }
+    const {data:quote,error:e3} = await db.from("quotes").insert({
+      job_id:job.id,quote_number:qNum,title:jobType+" Quote",
+      tier:currentTier||"Standard",status:"Draft",markup_pct:0,
+      notes:notes,
+      valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
+    }).select().single();
+    if(e3) throw e3;
+    const rows = lines.map((l,i)=>({
+      quote_id:quote.id,sort_order:i,category:l.isPackage?"Package":(l.isCustom?"Custom":"Add-on"),
+      name:l.name,unit:l.unit,quantity:l.qty,unit_cost:l.price
+    }));
+    const {error:e4} = await db.from("quote_line_items").insert(rows);
+    if(e4) throw e4;
+
+    toast(qNum+" saved"+(pendingLead?" — lead converted":""));
+    $("saveMsg").textContent="Saved as "+qNum+" ("+jobType+(currentTier?" · "+currentTier:"")+") — "+fmt(t.price)+". See the Quotes tab.";
+    pendingLead=null; renderLeadBanner();
+    lines=[]; currentTier=null; phases=[]; renderLines();
+    document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
+    ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput"].forEach(id=>{ if($(id)) $(id).value=""; });
+    (TRADES[currentTrade].toggles||[]).forEach(tg=>{ if($(tg.id)) $(tg.id).checked=false; });
+    (TRADES[currentTrade].selects||[]).forEach(s=>{ if($(s.id)) $(s.id).value=0; });
+  }catch(err){
+    console.error(err);
+    $("saveMsg").textContent="Save failed: "+(err.message||"unknown error")+". Check connection and retry.";
+  }
+  btn.disabled=false; btn.textContent="Save";
+}
+$("tapeSave").addEventListener("click",()=>{
+  document.activeElement && document.activeElement.blur();
+  setTimeout(saveQuote, 100);
+});
+
+/* ============ QUOTES LIST ============ */
+let quotesCache = [];
+let openQuoteId = null;
+let statusFilter = "All";
+
+function quotePrice(q){
+  const sum=(q.quote_line_items||[]).reduce((s,li)=>s+Number(li.line_cost||0),0);
+  return sum*(1+Number(q.markup_pct||0)/100);
+}
+function renderPipeStats(){
+  const now=new Date();
+  const dayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const weekStart=new Date(dayStart); weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+6)%7)); // Monday
+  const today=quotesCache.filter(q=>new Date(q.created_at)>=dayStart);
+  const week=quotesCache.filter(q=>new Date(q.created_at)>=weekStart);
+  const out=quotesCache.filter(q=>q.status==="Sent");
+  const outVal=out.reduce((s,q)=>s+quotePrice(q),0);
+  $("pipeStats").innerHTML=`
+    <div class="ps"><div class="v">${today.length}</div><div class="k">Today</div></div>
+    <div class="ps"><div class="v">${week.length}</div><div class="k">This week</div></div>
+    <div class="ps"><div class="v">${fmt0(outVal)}</div><div class="k">Out for answer</div></div>`;
+}
+function renderChips(){
+  const opts=["All","Draft","Sent","Approved","Declined"];
+  $("chipRow").innerHTML=opts.map(o=>{
+    const n = o==="All" ? quotesCache.length : quotesCache.filter(q=>q.status===o).length;
+    return `<button class="chip ${statusFilter===o?'sel':''}" data-f="${o}">${o} (${n})</button>`;
+  }).join("");
+  document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+    statusFilter=c.dataset.f; openQuoteId=null;
+    renderChips(); renderQuoteList(null);
+  }));
+}
+async function loadQuotes(){
+  $("qList").innerHTML='<p class="note">Loading…</p>';
+  const {data,error} = await db.from("quotes")
+    .select("id,quote_number,tier,status,markup_pct,title,notes,created_at,jobs(customer_id,city,street_address,job_type,customers:customer_id(first_name,last_name,phone,email)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order)")
+    .order("created_at",{ascending:false}).limit(50);
+  if(error){ $("qList").innerHTML='<p class="note">Could not load quotes: '+error.message+'</p>'; return; }
+  if(!data.length){ $("qList").innerHTML='<p class="note">No quotes yet.</p>'; return; }
+  quotesCache = data;
+  renderPipeStats();
+  renderChips();
+  renderQuoteList();
+}
+function parseNotes(notes){
+  const out={};
+  (notes||"").split(";").forEach(p=>{const i=p.indexOf(":");if(i>0)out[p.slice(0,i)]=p.slice(i+1);});
+  return out;
+}
+function renderQuoteList(openId){
+  const shown = statusFilter==="All" ? quotesCache : quotesCache.filter(q=>q.status===statusFilter);
+  if(!shown.length){ $("qList").innerHTML='<p class="note">No '+(statusFilter==="All"?"":statusFilter.toLowerCase()+" ")+'quotes.</p>'; return; }
+  $("qList").innerHTML = shown.map(q=>{
+    const price=quotePrice(q);
+    const cu=q.jobs?.customers;
+    const who=cu?cu.first_name+" "+cu.last_name:"—";
+    const d=new Date(q.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+    const trade=q.jobs?.job_type||"";
+    const tierBadge = q.tier && q.tier!=="Standard" ? `<span class="badge ${q.tier}">${q.tier}</span> ` : "";
+    const open = q.id===openId;
+    let detail="";
+    if(open){
+      const n=parseNotes(q.notes);
+      const items=(q.quote_line_items||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(li=>`
+        <div class="dLine"><span>${li.name} — ${li.quantity} ${li.unit||""}</span>
+        <span style="font-weight:600">${fmt(Number(li.line_cost||li.quantity*li.unit_cost||0))}</span></div>`).join("");
+      const contact=[cu?.phone,cu?.email].filter(Boolean).join(" · ");
+      const costInfo = n.cost ? `Your cost ${fmt0(n.cost)}${n.margin?` · margin ${n.margin}%`:""}${n.L?` · L ${fmt0(n.L)} / M ${fmt0(n.M)} / O ${fmt0(n.O)}`:""}` : "";
+      const phasing = n.phasing ? `<div class="dMeta">Payment schedule: ${n.phasing}</div>` : "";
+      const noWarranty = (q.notes||"").includes("NO-WARRANTY") ? `<div class="dMeta" style="color:var(--orange-deep);font-weight:700">⚠️ No-warranty repair terms apply</div>` : "";
+      detail=`<div class="qDetail">
+        ${contact?`<div class="dMeta">${contact}</div>`:""}
+        ${costInfo?`<div class="dMeta">${costInfo}</div>`:""}
+        ${phasing}${noWarranty}
+        ${items}
+        <div class="dLine" style="border-bottom:none;font-weight:800;font-size:15px">
+          <span>Total</span><span>${fmt(price)}</span></div>
+        <div class="statusRow">
+          ${["Draft","Sent","Approved","Declined"].map(s=>
+            `<button class="stBtn ${q.status===s?'cur':''}" data-q="${q.id}" data-s="${s}">${s}</button>`).join("")}
+          <button class="copyBtn" data-c="${q.id}">Copy summary</button>
+          <button class="copyBtn" data-pv="${q.id}" style="background:var(--orange)">👁 Preview</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="qRow" data-open="${q.id}">
+      <div><div class="who">${who}</div>
+      <div class="meta">${q.quote_number} · ${d}${trade?" · "+trade:""}${q.jobs?.city?" · "+q.jobs.city:""}</div></div>
+      <div style="text-align:right"><div class="amt">${fmt0(price)}</div>
+      ${tierBadge}<span class="badge ${q.status}">${q.status}</span></div>
+    </div>${detail}`;
+  }).join("");
+  document.querySelectorAll(".qRow").forEach(r=>r.addEventListener("click",()=>{
+    const id=r.dataset.open;
+    openQuoteId = (openQuoteId===id) ? null : id;
+    renderQuoteList(openQuoteId);
+  }));
+  document.querySelectorAll(".stBtn").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const id=b.dataset.q, st=b.dataset.s;
+    const {error}=await db.from("quotes").update({status:st}).eq("id",id);
+    if(error){ toast("Status update failed"); return; }
+    const q=quotesCache.find(x=>x.id===id); if(q) q.status=st;
+    renderPipeStats(); renderChips();
+    renderQuoteList(id);
+    toast("Marked "+st);
+  }));
+  document.querySelectorAll(".copyBtn[data-pv]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation();
+    const q=quotesCache.find(x=>x.id===b.dataset.pv);
+    if(!q) return;
+    const cu=q.jobs?.customers||{};
+    const n=parseNotes(q.notes);
+    const phasing=n.phasing?n.phasing.split(" / ").map(s=>{
+      const m=s.match(/^([\d.]+)%\s*(.*)$/); return m?{pct:Number(m[1]),label:m[2]}:null;
+    }).filter(Boolean):null;
+    showPreview({
+      qNum:q.quote_number,
+      jobType:q.jobs?.job_type||"",
+      tier:q.tier,
+      customer:{name:((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"Customer",
+        phone:cu.phone||"",email:cu.email||"",addr:q.jobs?.street_address||"",city:q.jobs?.city||""},
+      lines:(q.quote_line_items||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0))
+        .map(li=>({name:li.name,qty:li.quantity,unit:li.unit,price:li.unit_cost})),
+      total:quotePrice(q),
+      phasing:phasing,
+      isRepair:(q.notes||"").includes("NO-WARRANTY"),
+      validUntil:null
+    });
+  }));
+  document.querySelectorAll(".copyBtn[data-c]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const q=quotesCache.find(x=>x.id===b.dataset.c);
+    if(!q) return;
+    const cu=q.jobs?.customers;
+    const who=cu?cu.first_name+" "+cu.last_name:"—";
+    const summary=`${q.quote_number} · ${who} · ${q.jobs?.job_type||""}${q.tier&&q.tier!=="Standard"?" · "+q.tier:""} · ${fmt0(quotePrice(q))} · ${q.status}${q.jobs?.city?" · "+q.jobs.city:""}`;
+    try{ await navigator.clipboard.writeText(summary); toast("Copied — ready to text or email"); }
+    catch(err){ toast("Copy blocked — long-press to select instead"); }
+  }));
+}
+
+/* ============ BOOT ============ */
+renderTrades();
+renderBuilder();
+renderRates();
+renderLines();
+renderPhasing();
+loadLeads();
+</script>
+</body>
+</html>
