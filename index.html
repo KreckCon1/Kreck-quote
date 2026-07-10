@@ -325,13 +325,60 @@
   }
   #toast.show{transform:translateX(-50%) translateY(0)}
   @media (prefers-reduced-motion: reduce){ #toast{transition:none} }
+
+  /* ---------- AUTH GATE (v7.5) ---------- */
+  #authGate{
+    position:fixed;inset:0;z-index:99999;background:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    padding:24px calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
+  }
+  .authCard{
+    background:var(--card);border-radius:16px;padding:34px 30px 26px;
+    width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.5);
+    border-top:5px solid var(--orange);
+  }
+  .authBrand{font-size:30px;font-weight:800;letter-spacing:.06em;color:var(--ink)}
+  .authBrand span{color:var(--orange)}
+  .authSub{font-size:11.5px;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;margin:2px 0 24px}
+  .authLb{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+  #authGate input{
+    width:100%;font-size:17px;padding:13px 14px;border:1.5px solid var(--line);
+    border-radius:10px;background:var(--paper);color:var(--ink);
+  }
+  #authGate input:focus{outline:none;border-color:var(--orange)}
+  #authBtn{
+    width:100%;margin-top:22px;padding:15px;font-size:17px;font-weight:800;
+    letter-spacing:.04em;border:none;border-radius:10px;
+    background:var(--orange);color:#fff;
+  }
+  #authBtn:disabled{opacity:.6}
+  #authErr{min-height:20px;margin-top:12px;font-size:13.5px;font-weight:600;color:#b3261e;text-align:center}
+  .authFoot{margin-top:14px;font-size:12px;color:var(--muted);text-align:center;line-height:1.5}
+  #signOutBtn{
+    display:block;margin:26px auto 6px;padding:10px 18px;font-size:13px;font-weight:600;
+    color:var(--muted);background:none;border:1.5px solid var(--line);border-radius:10px;
+  }
 </style>
 </head>
 <body>
 
+<div id="authGate">
+  <div class="authCard">
+    <div class="authBrand">KRECK<span>OS</span></div>
+    <div class="authSub">Quote + Lead Engine</div>
+    <label class="authLb" for="authEmail">Email</label>
+    <input id="authEmail" type="email" autocomplete="username" autocapitalize="off" placeholder="you@kreckcontracting.com">
+    <label class="authLb" for="authPw">Password</label>
+    <input id="authPw" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button id="authBtn" type="button">Sign in</button>
+    <div id="authErr"></div>
+    <div class="authFoot">Sign in once — this device stays signed in until you sign out from the Rate Card tab.</div>
+  </div>
+</div>
+
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v7.4</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v7.5</div>
   <div id="connDot">connecting…</div>
 </header>
 <nav>
@@ -467,6 +514,7 @@
     <h2>Kreck rate card</h2>
     <div id="rateView"></div>
     <p class="note">Selling prices shown. Cost basis (labor / materials / other) lives inside the app for margin tracking. To change rates, ask Claude for an updated file — two-minute swap.</p>
+    <button id="signOutBtn" type="button">Sign out of KRECK OS on this device</button>
   </section>
 
 </main>
@@ -1265,14 +1313,6 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
 }
 
-/* ============ CONNECTION ============ */
-(async ()=>{
-  const {error} = await db.from("quotes").select("id",{head:true,count:"exact"});
-  const dot=$("connDot");
-  if(error){ dot.className="err"; dot.textContent="offline"; }
-  else { dot.className="on"; dot.textContent="connected"; }
-})();
-
 /* ============ TRADE SELECTOR ============ */
 function renderTrades(){
   $("tradeRow").innerHTML = Object.keys(TRADES).map(t=>
@@ -1846,13 +1886,59 @@ function renderQuoteList(openId){
   }));
 }
 
-/* ============ BOOT ============ */
-renderTrades();
-renderBuilder();
-renderRates();
-renderLines();
-renderPhasing();
-loadLeads();
+/* ============ AUTH + BOOT (v7.5) ============ */
+let appBooted=false;
+function initApp(){
+  if(appBooted) return; appBooted=true;
+  renderTrades();
+  renderBuilder();
+  renderRates();
+  renderLines();
+  renderPhasing();
+  loadLeads();
+  (async ()=>{
+    const {error} = await db.from("quotes").select("id",{head:true,count:"exact"});
+    const dot=$("connDot");
+    if(error){ dot.className="err"; dot.textContent="offline"; }
+    else { dot.className="on"; dot.textContent="connected"; }
+  })();
+}
+function showGate(){ $("authGate").style.display="flex"; const dot=$("connDot"); dot.className=""; dot.textContent="signed out"; }
+function hideGate(){ $("authGate").style.display="none"; }
+
+async function doSignIn(){
+  const email=$("authEmail").value.trim(), pw=$("authPw").value;
+  const err=$("authErr"); err.textContent="";
+  if(!email||!pw){ err.textContent="Enter your email and password."; return; }
+  const btn=$("authBtn"); btn.disabled=true; btn.textContent="Signing in…";
+  const {error} = await db.auth.signInWithPassword({email, password:pw});
+  btn.disabled=false; btn.textContent="Sign in";
+  if(error){
+    err.textContent = /invalid login/i.test(error.message||"")
+      ? "Wrong email or password." : "Sign-in failed: "+(error.message||"unknown error");
+    return;
+  }
+  $("authPw").value="";
+  hideGate(); initApp(); toast("Signed in — welcome back");
+}
+$("authBtn").addEventListener("click",doSignIn);
+$("authPw").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); doSignIn(); } });
+$("authEmail").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("authPw").focus(); } });
+
+$("signOutBtn").addEventListener("click",async ()=>{
+  if(!confirm("Sign out of KRECK OS on this device? You'll need your password to get back in.")) return;
+  try{ await db.auth.signOut(); }catch(_){}
+  location.reload();
+});
+
+(async ()=>{
+  try{
+    const {data:{session}} = await db.auth.getSession();
+    if(session){ hideGate(); initApp(); }
+    else showGate();
+  }catch(_){ showGate(); }
+  db.auth.onAuthStateChange((ev)=>{ if(ev==="SIGNED_OUT") showGate(); });
+})();
 
 try{ $("verSub").textContent += " ✓ JS running"; }catch(_){}
 </script>
