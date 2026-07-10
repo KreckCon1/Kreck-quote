@@ -132,6 +132,15 @@
       border-top:2px solid #fff;padding-top:14px}
   }
 
+  /* ---------- tappable option cards inside the document ---------- */
+  .pvOptCard.tappable{cursor:pointer;transition:border-color .12s, background .12s}
+  .pvOptCard.tappable:active{background:#fff3e8}
+  .pvOptCard.picked{border:2.5px solid var(--ok)!important;background:#f2f8f2}
+  .pvOptCard.picked .bx2{background:var(--ok);border-color:var(--ok);position:relative}
+  .pvOptCard.picked .bx2::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:10px;
+    font-weight:800;display:flex;align-items:center;justify-content:center}
+  .pvOptCard.picked .ck{color:var(--ok);font-weight:800}
+
   /* ---------- signing panel ---------- */
   #signWrap{max-width:760px;margin:0 auto;padding:0 28px 40px}
   @media (max-width:640px){ #signWrap{padding:0 16px 40px} }
@@ -236,6 +245,36 @@ function renderSignedBanner(name, option, price, when){
   </div>`;
 }
 
+function syncDocCards(){
+  const opts = shareData.snapshot.options || [];
+  document.querySelectorAll("#doc .pvOptCard").forEach((card, i) => {
+    if(i >= opts.length) return;
+    card.classList.toggle("picked", opts[i].key === selectedKey);
+    const ck = card.querySelector(".ck");
+    if(ck){
+      const txt = ck.childNodes[ck.childNodes.length-1];
+      if(txt) txt.textContent = opts[i].key === selectedKey ? " Selected" : " Select this option";
+    }
+  });
+}
+
+function selectOption(key){
+  selectedKey = key;
+  renderOptions();
+  syncBar();
+  syncSignBtn();
+  syncDocCards();
+}
+
+function wireDocCards(){
+  const opts = shareData.snapshot.options || [];
+  document.querySelectorAll("#doc .pvOptCard").forEach((card, i) => {
+    if(i >= opts.length) return;
+    card.classList.add("tappable");
+    card.addEventListener("click", () => selectOption(opts[i].key));
+  });
+}
+
 function renderOptions(){
   const opts = shareData.snapshot.options || [];
   $("optPicks").innerHTML = opts.map(o => `
@@ -246,10 +285,7 @@ function renderOptions(){
       <span class="opr">${fmt(o.total)}</span>
     </button>`).join("");
   document.querySelectorAll(".optPick").forEach(b => b.addEventListener("click", () => {
-    selectedKey = b.dataset.k;
-    renderOptions();
-    syncBar();
-    syncSignBtn();
+    selectOption(b.dataset.k);
   }));
 }
 
@@ -343,6 +379,7 @@ async function doSign(){
     $("signWrap").style.display = "block";
     $("bar").style.display = "flex";
     renderOptions();
+    wireDocCards();
     syncBar();
     $("signName").addEventListener("input", syncSignBtn);
     $("consentBox").addEventListener("change", syncSignBtn);
