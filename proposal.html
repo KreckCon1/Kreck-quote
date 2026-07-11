@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Your Proposal — Kreck Contracting</title>
+<title>Your Proposal — Kreck Contracting · v3</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -152,6 +152,14 @@
   .optPick.declinePick.sel .radio{border-color:var(--muted)}
   .optPick.declinePick.sel .radio::after{background:var(--muted)}
 
+  /* ---------- Build 4 (v3): customer upsell groups ---------- */
+  .upsHd{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin:14px 0 6px}
+  .optPick.upsPick{padding:11px 14px}
+  .optPick.upsPick .onm{font-size:13.5px;font-weight:700}
+  .optPick.upsPick .opr{font-size:15px}
+  .upsAsk{font-size:12px;color:var(--muted);font-weight:600;margin:2px 2px 12px;padding-left:2px}
+
   /* ---------- signing panel ---------- */
   #signWrap{max-width:760px;margin:0 auto;padding:0 28px 40px}
   @media (max-width:640px){ #signWrap{padding:0 16px 40px} }
@@ -230,6 +238,8 @@
   <button id="barBtn">Review &amp; Sign</button>
 </div>
 
+<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v3</div>
+
 <script>
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
 const SB_KEY = "sb_publishable_pxjQJVlvNgBqojzuNcvH5A_wUGT3VwZ";
@@ -239,10 +249,15 @@ const fmt = n => "$" + Number(n).toLocaleString("en-US", {minimumFractionDigits:
 
 let token = null, shareData = null;
 /* Build 3: snapshot v2 detection — options carrying a trade field group per trade.
-   v1 snapshots (no trade field) keep the original single-pick flow untouched. */
+   v1 snapshots (no trade field) keep the original single-pick flow untouched.
+   Build 4: snapshot v3 detection — presence of an `upsells` array. v1 and v2 links
+   render and sign exactly as before; upsells only add optional upgrade groups. */
 let isV2 = false, groups = [], docOpts = [];
 let selectedKey = null;        /* v1 state */
 let sel = {};                  /* v2 state: trade -> option key | "declined" */
+let upsGroups = [];            /* v3 state: frozen upsell groups from the snapshot */
+let upSel = {};                /* v3 state: "trade§group" -> chosen choice key */
+const ukey = u => u.trade + "§" + u.group;
 
 function computeGroups(){
   const opts = shareData.snapshot.options || [];
@@ -254,7 +269,30 @@ function computeGroups(){
   /* the document renders cards grouped by trade — wire cards in that same order,
      NOT raw option order, or interleaved-trade quotes light up the wrong cards */
   docOpts = groups.flatMap(g => g.opts);
+  /* Build 4: load frozen upsells; the included choice is the pre-selected $0 default */
+  upsGroups = Array.isArray(shareData.snapshot.upsells) ? shareData.snapshot.upsells : [];
+  upsGroups.forEach(u => {
+    const inc = (u.choices||[]).find(c => c.included) || (u.choices||[])[0];
+    if(inc) upSel[ukey(u)] = inc.key;
+  });
 }
+/* An upsell group is APPLICABLE (priced into the bar, sent at signing) only when its
+   trade has a picked, non-declined option that satisfies any tier/option condition. */
+function upsFor(tr){ return upsGroups.filter(u => u.trade===tr); }
+function upsApplicable(u){
+  const k = sel[u.trade];
+  if(!k || k==="declined") return false;
+  if(u.onlyOpts && !u.onlyOpts.includes(k)) return false;
+  if(u.condTier){ const o = optByKey(k); if(!o || o.tier!==u.condTier) return false; }
+  return true;
+}
+/* Visible: unconditional groups show unless the trade is declined; conditional groups
+   (fan fold on Basic vinyl) appear and disappear live with the customer's pick. */
+function upsVisible(u){
+  if(sel[u.trade]==="declined") return false;
+  return (u.condTier || u.onlyOpts) ? upsApplicable(u) : true;
+}
+function upsChoice(u){ return (u.choices||[]).find(c => c.key===upSel[ukey(u)]); }
 function optByKey(k){ return (shareData.snapshot.options || []).find(o => o.key === k); }
 function pickedOpts(){
   return groups.map(g => sel[g.trade]).filter(k => k && k !== "declined")
@@ -330,9 +368,23 @@ function renderOptions(){
       <span><span class="onm">Not now — exclude ${g.trade}</span>
       <div class="otr" style="color:var(--muted)">You can add it back any time before signing</div></span>
       <span class="opr" style="color:var(--muted)">—</span>
-    </button>` : ""}`).join("");
+    </button>` : ""}
+    ${upsFor(g.trade).filter(upsVisible).map(u => `
+      <div class="upsHd">${u.group} — ${u.qty} ${u.unit}</div>
+      ${(u.choices||[]).map(c => `
+      <button class="optPick upsPick${upSel[ukey(u)]===c.key ? " sel" : ""}" data-ug="${ukey(u)}" data-uc="${c.key}">
+        <span class="radio"></span>
+        <span><span class="onm">${c.name}</span></span>
+        <span class="opr"${Number(c.delta)>0 ? "" : ` style="color:var(--muted)"`}>${Number(c.delta)>0 ? "+"+fmt(c.delta) : "—"}</span>
+      </button>`).join("")}
+      ${u.askNote ? `<div class="upsAsk">${u.askNote} — call Ti at 845-667-0586</div>` : ""}
+    `).join("")}`).join("");
   document.querySelectorAll(".optPick[data-k]").forEach(b => b.addEventListener("click", () => selectOption(b.dataset.k)));
   document.querySelectorAll(".optPick[data-decline]").forEach(b => b.addEventListener("click", () => declineTrade(b.dataset.decline)));
+  document.querySelectorAll(".optPick[data-ug]").forEach(b => b.addEventListener("click", () => {
+    upSel[b.dataset.ug] = b.dataset.uc;
+    refreshUI();
+  }));
 }
 
 function syncBar(){
@@ -348,7 +400,10 @@ function syncBar(){
     return;
   }
   const picked = pickedOpts();
-  const total = picked.reduce((s,o) => s + Number(o.total||0), 0);
+  /* Build 4: bar = picked options + picked upsell deltas (applicable groups only) */
+  const upsTotal = upsGroups.filter(upsApplicable)
+    .reduce((s,u) => { const c = upsChoice(u); return s + (c ? Number(c.delta||0) : 0); }, 0);
+  const total = picked.reduce((s,o) => s + Number(o.total||0), 0) + upsTotal;
   const missing = groups.filter(g => !sel[g.trade]).map(g => g.trade);
   if(missing.length){
     $("barLbl").textContent = "Choose for: " + missing.join(", ");
@@ -358,7 +413,7 @@ function syncBar(){
     $("barVal").textContent = "—";
   } else {
     const trades = groups.filter(g => sel[g.trade] !== "declined").map(g => g.trade);
-    $("barLbl").textContent = trades.join(" + ") + (trades.length>1 ? " · combined" : "");
+    $("barLbl").textContent = trades.join(" + ") + (trades.length>1 ? " · combined" : "") + (upsTotal>0 ? " · incl. upgrades" : "");
     $("barVal").textContent = fmt(total);
   }
 }
@@ -374,10 +429,22 @@ async function doSign(){
   $("signErr").textContent = "";
   const btn = $("signBtn");
   btn.disabled = true; btn.textContent = "Signing…";
+  /* Build 4 (v3): a trade with upsell groups signs as {option, upsells:{group:choiceKey}};
+     trades without groups keep the v2 string shape — the RPC accepts both. Hidden
+     conditional groups (e.g. fan fold after switching to Hardie) are OMITTED. */
+  const v3sel = g => {
+    const k = sel[g.trade];
+    if(k === "declined") return "declined";
+    const gs = upsFor(g.trade);
+    if(!gs.length) return k;
+    const ups = {};
+    gs.filter(upsApplicable).forEach(u => { ups[u.group] = upSel[ukey(u)]; });
+    return { option: k, upsells: ups };
+  };
   const payload = isV2
     ? { p_token: token,
         p_name: $("signName").value.trim(),
-        p_selections: Object.fromEntries(groups.map(g => [g.trade, sel[g.trade]])),
+        p_selections: Object.fromEntries(groups.map(g => [g.trade, v3sel(g)])),
         p_consent: $("consentBox").checked }
     : { p_token: token,
         p_name: $("signName").value.trim(),
@@ -400,6 +467,7 @@ async function doSign(){
       missing_selection: "Please make a selection — or tap “Not now” — for every section above.",
       all_declined: "At least one option must be selected to sign.",
       bad_selection: "One of your selections didn't match this proposal — please re-select and try again.",
+      bad_upsell: "One of your upgrade selections didn't match this proposal — please re-select and try again.",
       not_found: "This link is no longer valid."
     }[data.error] || "Could not complete signing.";
     $("signErr").textContent = msg;
@@ -443,7 +511,7 @@ async function doSign(){
   shareData = data;
   computeGroups();
   hideState();
-  document.title = (data.job_type ? data.job_type + " Proposal" : "Your Proposal") + " — Kreck Contracting";
+  document.title = (data.job_type ? data.job_type + " Proposal" : "Your Proposal") + " — Kreck Contracting · v3";
   $("doc").innerHTML = data.snapshot.html;
   $("doc").style.display = "block";
 
