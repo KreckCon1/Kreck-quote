@@ -141,6 +141,17 @@
     font-weight:800;display:flex;align-items:center;justify-content:center}
   .pvOptCard.picked .ck{color:var(--ok);font-weight:800}
 
+  /* ---------- Build 3: per-trade selection groups ---------- */
+  .pvOptCard.dimmed{opacity:.45}
+  .grpHd{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--orange-deep);margin:18px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--orange)}
+  #optPicks .grpHd:first-child{margin-top:0}
+  .optPick.declinePick{border-style:dashed;background:#faf8f4}
+  .optPick.declinePick .onm{color:#5a544a}
+  .optPick.declinePick.sel{border-color:var(--muted);background:#f0ede7}
+  .optPick.declinePick.sel .radio{border-color:var(--muted)}
+  .optPick.declinePick.sel .radio::after{background:var(--muted)}
+
   /* ---------- signing panel ---------- */
   #signWrap{max-width:760px;margin:0 auto;padding:0 28px 40px}
   @media (max-width:640px){ #signWrap{padding:0 16px 40px} }
@@ -226,7 +237,29 @@ const db = supabase.createClient(SB_URL, SB_KEY);
 const $ = id => document.getElementById(id);
 const fmt = n => "$" + Number(n).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
 
-let token = null, shareData = null, selectedKey = null;
+let token = null, shareData = null;
+/* Build 3: snapshot v2 detection — options carrying a trade field group per trade.
+   v1 snapshots (no trade field) keep the original single-pick flow untouched. */
+let isV2 = false, groups = [], docOpts = [];
+let selectedKey = null;        /* v1 state */
+let sel = {};                  /* v2 state: trade -> option key | "declined" */
+
+function computeGroups(){
+  const opts = shareData.snapshot.options || [];
+  isV2 = opts.some(o => o.trade != null);
+  if(!isV2){ groups = [{trade:null, opts}]; docOpts = opts; return; }
+  const seen = [];
+  opts.forEach(o => { if(!seen.includes(o.trade)) seen.push(o.trade); });
+  groups = seen.map(tr => ({trade:tr, opts:opts.filter(o => o.trade===tr)}));
+  /* the document renders cards grouped by trade — wire cards in that same order,
+     NOT raw option order, or interleaved-trade quotes light up the wrong cards */
+  docOpts = groups.flatMap(g => g.opts);
+}
+function optByKey(k){ return (shareData.snapshot.options || []).find(o => o.key === k); }
+function pickedOpts(){
+  return groups.map(g => sel[g.trade]).filter(k => k && k !== "declined")
+    .map(optByKey).filter(Boolean);
+}
 
 function showState(big, sm){
   $("stateBox").style.display = "block";
@@ -246,74 +279,111 @@ function renderSignedBanner(name, option, price, when){
 }
 
 function syncDocCards(){
-  const opts = shareData.snapshot.options || [];
   document.querySelectorAll("#doc .pvOptCard").forEach((card, i) => {
-    if(i >= opts.length) return;
-    card.classList.toggle("picked", opts[i].key === selectedKey);
+    if(i >= docOpts.length) return;
+    const o = docOpts[i];
+    const picked = isV2 ? sel[o.trade] === o.key : o.key === selectedKey;
+    card.classList.toggle("picked", picked);
+    card.classList.toggle("dimmed", isV2 && sel[o.trade] === "declined");
     const ck = card.querySelector(".ck");
     if(ck){
       const txt = ck.childNodes[ck.childNodes.length-1];
-      if(txt) txt.textContent = opts[i].key === selectedKey ? " Selected" : " Select this option";
+      if(txt) txt.textContent = picked ? " Selected" : " Select this option";
     }
   });
 }
 
+function refreshUI(){ renderOptions(); syncBar(); syncSignBtn(); syncDocCards(); }
+
 function selectOption(key){
-  selectedKey = key;
-  renderOptions();
-  syncBar();
-  syncSignBtn();
-  syncDocCards();
+  const o = optByKey(key); if(!o) return;
+  if(isV2) sel[o.trade] = key; else selectedKey = key;
+  refreshUI();
+}
+function declineTrade(tr){
+  if(sel[tr] === "declined") delete sel[tr]; /* tap again to undo */
+  else sel[tr] = "declined";
+  refreshUI();
 }
 
 function wireDocCards(){
-  const opts = shareData.snapshot.options || [];
   document.querySelectorAll("#doc .pvOptCard").forEach((card, i) => {
-    if(i >= opts.length) return;
+    if(i >= docOpts.length) return;
     card.classList.add("tappable");
-    card.addEventListener("click", () => selectOption(opts[i].key));
+    card.addEventListener("click", () => selectOption(docOpts[i].key));
   });
 }
 
 function renderOptions(){
-  const opts = shareData.snapshot.options || [];
-  $("optPicks").innerHTML = opts.map(o => `
-    <button class="optPick${o.key===selectedKey ? " sel" : ""}" data-k="${o.key}">
+  $("optPicks").innerHTML = groups.map(g => `
+    ${isV2 ? `<div class="grpHd">${g.trade}${g.opts.length>1 ? " — choose one" : ""}</div>` : ""}
+    ${g.opts.map(o => `
+    <button class="optPick${(isV2 ? sel[g.trade]===o.key : o.key===selectedKey) ? " sel" : ""}" data-k="${o.key}">
       <span class="radio"></span>
       <span><span class="onm">${o.name || o.label}</span>
       ${o.tier ? `<div class="otr">${o.tier}</div>` : ""}</span>
       <span class="opr">${fmt(o.total)}</span>
-    </button>`).join("");
-  document.querySelectorAll(".optPick").forEach(b => b.addEventListener("click", () => {
-    selectOption(b.dataset.k);
-  }));
+    </button>`).join("")}
+    ${isV2 && groups.length>1 ? `
+    <button class="optPick declinePick${sel[g.trade]==="declined" ? " sel" : ""}" data-decline="${g.trade}">
+      <span class="radio"></span>
+      <span><span class="onm">Not now — exclude ${g.trade}</span>
+      <div class="otr" style="color:var(--muted)">You can add it back any time before signing</div></span>
+      <span class="opr" style="color:var(--muted)">—</span>
+    </button>` : ""}`).join("");
+  document.querySelectorAll(".optPick[data-k]").forEach(b => b.addEventListener("click", () => selectOption(b.dataset.k)));
+  document.querySelectorAll(".optPick[data-decline]").forEach(b => b.addEventListener("click", () => declineTrade(b.dataset.decline)));
 }
 
 function syncBar(){
-  const opts = shareData.snapshot.options || [];
-  const sel = opts.find(o => o.key === selectedKey);
-  if(sel){
-    $("barLbl").textContent = sel.name || sel.label;
-    $("barVal").textContent = fmt(sel.total);
-  } else {
-    $("barLbl").textContent = "Select an option";
+  if(!isV2){
+    const sel1 = (shareData.snapshot.options || []).find(o => o.key === selectedKey);
+    if(sel1){
+      $("barLbl").textContent = sel1.name || sel1.label;
+      $("barVal").textContent = fmt(sel1.total);
+    } else {
+      $("barLbl").textContent = "Select an option";
+      $("barVal").textContent = "—";
+    }
+    return;
+  }
+  const picked = pickedOpts();
+  const total = picked.reduce((s,o) => s + Number(o.total||0), 0);
+  const missing = groups.filter(g => !sel[g.trade]).map(g => g.trade);
+  if(missing.length){
+    $("barLbl").textContent = "Choose for: " + missing.join(", ");
+    $("barVal").textContent = picked.length ? fmt(total) : "—";
+  } else if(!picked.length){
+    $("barLbl").textContent = "Select at least one option";
     $("barVal").textContent = "—";
+  } else {
+    const trades = groups.filter(g => sel[g.trade] !== "declined").map(g => g.trade);
+    $("barLbl").textContent = trades.join(" + ") + (trades.length>1 ? " · combined" : "");
+    $("barVal").textContent = fmt(total);
   }
 }
 function syncSignBtn(){
-  $("signBtn").disabled = !(selectedKey && $("signName").value.trim().length >= 2 && $("consentBox").checked);
+  const nameOk = $("signName").value.trim().length >= 2 && $("consentBox").checked;
+  const selOk = isV2
+    ? groups.every(g => sel[g.trade]) && pickedOpts().length >= 1
+    : !!selectedKey;
+  $("signBtn").disabled = !(selOk && nameOk);
 }
 
 async function doSign(){
   $("signErr").textContent = "";
   const btn = $("signBtn");
   btn.disabled = true; btn.textContent = "Signing…";
-  const { data, error } = await db.rpc("sign_proposal", {
-    p_token: token,
-    p_name: $("signName").value.trim(),
-    p_option_key: selectedKey,
-    p_consent: $("consentBox").checked
-  });
+  const payload = isV2
+    ? { p_token: token,
+        p_name: $("signName").value.trim(),
+        p_selections: Object.fromEntries(groups.map(g => [g.trade, sel[g.trade]])),
+        p_consent: $("consentBox").checked }
+    : { p_token: token,
+        p_name: $("signName").value.trim(),
+        p_option_key: selectedKey,
+        p_consent: $("consentBox").checked };
+  const { data, error } = await db.rpc("sign_proposal", payload);
   btn.textContent = "Sign & Accept Proposal";
   if(error){
     $("signErr").textContent = "Something went wrong — check your connection and try again, or call 845-667-0586.";
@@ -327,6 +397,9 @@ async function doSign(){
       consent_required: "Please check the electronic signature consent box.",
       name_required: "Please type your full legal name.",
       bad_option: "Please select one of the options above.",
+      missing_selection: "Please make a selection — or tap “Not now” — for every section above.",
+      all_declined: "At least one option must be selected to sign.",
+      bad_selection: "One of your selections didn't match this proposal — please re-select and try again.",
       not_found: "This link is no longer valid."
     }[data.error] || "Could not complete signing.";
     $("signErr").textContent = msg;
@@ -368,6 +441,7 @@ async function doSign(){
   }
 
   shareData = data;
+  computeGroups();
   hideState();
   document.title = (data.job_type ? data.job_type + " Proposal" : "Your Proposal") + " — Kreck Contracting";
   $("doc").innerHTML = data.snapshot.html;
