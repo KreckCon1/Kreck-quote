@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Your Proposal — Kreck Contracting · v3</title>
+<title>Your Proposal — Kreck Contracting · v4</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -179,6 +179,13 @@
     color:var(--muted);margin:16px 0 5px}
   #signName{width:100%;padding:13px 14px;font-size:17px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit}
   #signName:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+  /* Build 5b hotfix: stop iPad Safari double-tap zoom on rapid taps */
+  button,input[type=checkbox],.optCard,.upsChoice{touch-action:manipulation}
+  /* Build 5b (v4): customer inputs — all optional (D4), live in the sign card (D5) */
+  .ciFld{width:100%;padding:12px 13px;font-size:16px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;background:#fff}
+  .ciFld:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+  textarea.ciFld{min-height:84px;resize:vertical}
+  .ciOpt{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)}
   .consentRow{display:flex;gap:11px;align-items:flex-start;margin-top:16px;background:#fff;
     border:1.5px solid var(--line);border-radius:10px;padding:13px}
   .consentRow input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:var(--orange)}
@@ -222,6 +229,16 @@
     <h2>Accept &amp; Sign</h2>
     <div class="sub">Choose your option, type your full legal name, and sign electronically. Questions first? Call Ti at 845-667-0586.</div>
     <div id="optPicks"></div>
+    <div id="custInputs" style="display:none">
+      <label class="fld" for="ciColor">Color / style choice <span class="ciOpt">(optional)</span></label>
+      <input id="ciColor" class="ciFld" type="text" maxlength="120" placeholder="e.g. Onyx Black shingles">
+      <label class="fld" for="ciTrim">Trim / accent <span class="ciOpt">(optional)</span></label>
+      <input id="ciTrim" class="ciFld" type="text" maxlength="120" placeholder="e.g. white drip edge">
+      <label class="fld" for="ciOther">Other <span class="ciOpt">(optional)</span></label>
+      <input id="ciOther" class="ciFld" type="text" maxlength="120" placeholder="Anything else we should note">
+      <label class="fld" for="ciComments">Comments or questions for us <span class="ciOpt">(optional)</span></label>
+      <textarea id="ciComments" class="ciFld" maxlength="1000" placeholder="We read every one before work is scheduled."></textarea>
+    </div>
     <label class="fld" for="signName">Your full legal name</label>
     <input id="signName" type="text" autocomplete="name" placeholder="First and last name">
     <div class="consentRow">
@@ -238,7 +255,7 @@
   <button id="barBtn">Review &amp; Sign</button>
 </div>
 
-<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v3</div>
+<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4</div>
 
 <script>
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
@@ -441,11 +458,18 @@ async function doSign(){
     gs.filter(upsApplicable).forEach(u => { ups[u.group] = upSel[ukey(u)]; });
     return { option: k, upsells: ups };
   };
+  /* Build 5b (v4): optional customer inputs (D4) — trimmed, length-capped client-side;
+     the RPC sanitizes again server-side. All empty -> null (column stays null). */
+  const ciVal = (id,cap) => $(id).value.trim().slice(0,cap);
+  const ci = { color:ciVal("ciColor",120), trim:ciVal("ciTrim",120),
+               other:ciVal("ciOther",120), comments:ciVal("ciComments",1000) };
+  const pCustomer = Object.values(ci).some(v=>v) ? ci : null;
   const payload = isV2
     ? { p_token: token,
         p_name: $("signName").value.trim(),
         p_selections: Object.fromEntries(groups.map(g => [g.trade, v3sel(g)])),
-        p_consent: $("consentBox").checked }
+        p_consent: $("consentBox").checked,
+        p_customer: pCustomer }
     : { p_token: token,
         p_name: $("signName").value.trim(),
         p_option_key: selectedKey,
@@ -511,7 +535,7 @@ async function doSign(){
   shareData = data;
   computeGroups();
   hideState();
-  document.title = (data.job_type ? data.job_type + " Proposal" : "Your Proposal") + " — Kreck Contracting · v3";
+  document.title = (data.job_type ? data.job_type + " Proposal" : "Your Proposal") + " — Kreck Contracting · v4";
   $("doc").innerHTML = data.snapshot.html;
   $("doc").style.display = "block";
 
@@ -520,6 +544,9 @@ async function doSign(){
   } else {
     $("signWrap").style.display = "block";
     $("bar").style.display = "flex";
+    /* Build 5b (v4): customer inputs ride the jsonb sign path only — v1 text-function
+       links keep signing exactly as before, no inputs, no new parameter */
+    $("custInputs").style.display = isV2 ? "" : "none";
     renderOptions();
     wireDocCards();
     syncBar();
