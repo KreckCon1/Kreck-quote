@@ -180,6 +180,19 @@
     background:#fff;font-size:13.5px;font-weight:700;cursor:pointer;color:var(--muted)}
   .chip.sel{background:var(--ink);border-color:var(--ink);color:#fff}
   .tempRow{display:flex;gap:8px;margin-top:6px}
+  /* Build 6 (v8.4): lead-source chips + customer picker + builder photo strip */
+  .srcChips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+  .srcChips .chip{margin:0}
+  #custResults{margin-top:8px}
+  .custHit{padding:12px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;background:#fff;cursor:pointer}
+  .custHit b{display:block;font-size:15px}
+  .custHit .meta{font-size:12px;color:#8a8378;margin-top:2px}
+  .pickedBar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef6ee;border:1.5px solid #bcd9bc;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+  .pickedBar button{background:none;border:none;color:var(--orange);font-weight:700;font-size:13px;flex:0 0 auto;touch-action:manipulation}
+  #bPhotoStrip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .bPh{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+  .bPh img{width:100%;height:100%;object-fit:cover;display:block}
+  .bPh button{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;line-height:1;touch-action:manipulation}
   .tempBtn{flex:1;padding:12px;font-size:26px;border-radius:10px;border:2px solid var(--line);
     background:#fff;cursor:pointer;text-align:center}
   .tempBtn.sel{border-color:var(--orange);background:#fff3e8}
@@ -388,7 +401,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v8.3 — Decision Hub</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v8.4 — Front Door</div>
   <div id="connDot">connecting…</div>
 </header>
 <nav>
@@ -418,11 +431,12 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
           <select id="lType"><option>Roofing</option><option>Decking</option><option>Siding</option>
           <option>Roof Repair</option><option>Custom</option><option>Other</option></select></div>
       </div>
-      <div class="row2">
-        <div><label>Lead source</label>
-          <select id="lSource"><option>Google</option><option>Referral</option><option>Repeat customer</option>
-          <option>Yard sign</option><option>Website</option><option>Moneypenny</option><option>Other</option></select></div>
+      <label>Lead source — tap one</label>
+      <div class="srcChips" id="lSrcChips"></div>
+      <input id="lSourceDetail" placeholder="Who exactly? (optional — Jane Smith, Keller Williams)">
+      <div class="row2" style="margin-top:10px">
         <div><label>Appointment (optional)</label><input id="lAppt" type="datetime-local"></div>
+        <div></div>
       </div>
       <div class="toggleRow">
         <span class="tl">🚨 Emergency</span>
@@ -457,25 +471,43 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
     <h2>Customer</h2>
     <div class="card">
-      <div class="row2">
-        <div><label>First name</label><input id="cFirst" autocomplete="off"></div>
-        <div><label>Last name</label><input id="cLast" autocomplete="off"></div>
+      <div id="custPickWrap">
+        <label>Find customer</label>
+        <input id="custSearch" placeholder="Search name, phone, or street…" autocomplete="off">
+        <div id="custResults"></div>
+        <button class="btn ghost" id="custNewBtn" type="button" style="margin-top:10px">➕ New customer</button>
       </div>
-      <div class="row2">
-        <div><label>Phone</label><input id="cPhone" type="tel" inputmode="tel"></div>
-        <div><label>Email</label><input id="cEmail" type="email" inputmode="email"></div>
+      <div id="custPickedBar" class="pickedBar" style="display:none"></div>
+      <div id="custFields" style="display:none">
+        <div class="row2">
+          <div><label>First name</label><input id="cFirst" autocomplete="off"></div>
+          <div><label>Last name</label><input id="cLast" autocomplete="off"></div>
+        </div>
+        <div class="row2">
+          <div><label>Phone</label><input id="cPhone" type="tel" inputmode="tel"></div>
+          <div><label>Email</label><input id="cEmail" type="email" inputmode="email"></div>
+        </div>
+        <label>Job address</label><input id="cAddr" placeholder="Street address">
+        <div class="row3">
+          <div><label>City</label><input id="cCity"></div>
+          <div><label>State</label><input id="cState" value="NY"></div>
+          <div><label>Zip</label><input id="cZip" inputmode="numeric"></div>
+        </div>
+        <div id="srcWrap">
+          <label>Lead source — tap one</label>
+          <div class="srcChips" id="cSrcChips"></div>
+          <input id="cSourceDetail" placeholder="Who exactly? (optional — Jane Smith, Keller Williams)">
+        </div>
+        <p class="note" id="srcLocked" style="display:none"></p>
       </div>
-      <label>Job address</label><input id="cAddr" placeholder="Street address">
-      <div class="row3">
-        <div><label>City</label><input id="cCity"></div>
-        <div><label>State</label><input id="cState" value="NY"></div>
-        <div><label>Zip</label><input id="cZip" inputmode="numeric"></div>
-      </div>
-      <label>Lead source</label>
-      <select id="cSource">
-        <option>Google</option><option>Referral</option><option>Repeat customer</option>
-        <option>Yard sign</option><option>Website</option><option>Moneypenny</option><option>Other</option>
-      </select>
+    </div>
+
+    <h2>Photos</h2>
+    <div class="card">
+      <div id="bPhotoStrip"></div>
+      <button class="btn ghost" id="bPhotoBtn" type="button">📷 Add photos</button>
+      <input type="file" id="bPhotoInput" accept="image/*" multiple style="display:none">
+      <p class="note">Photos upload right away and ride into the customer's proposal — first photo is the cover. Tap ✕ on a thumbnail to remove one.</p>
     </div>
 
     <div id="pkgWrap">
@@ -848,15 +880,17 @@ document.querySelectorAll(".tempBtn").forEach(b=>b.addEventListener("click",e=>{
 $("saveLead").addEventListener("click", async ()=>{
   const first=$("lFirst").value.trim(), last=$("lLast").value.trim();
   if(!first && !last){ toast("Enter at least a name"); return; }
+  if(!lSrcSel){ toast("Tap a lead source — it feeds the Sources report later"); return; }
   const btn=$("saveLead"); btn.disabled=true; btn.textContent="Saving…";
   try{
-    const {data:cust,error:e1} = await db.from("customers").insert({
-      first_name:first||"—",last_name:last||"—",
-      phone:$("lPhone").value.trim()||null,email:$("lEmail").value.trim()||null,
-      street_address:$("lAddr").value.trim()||null,city:$("lCity").value.trim()||null,
-      state:"NY",lead_source:$("lSource").value
-    }).select().single();
-    if(e1) throw e1;
+    /* Build 6 D5: Leads tab and New Quote share ONE customer-create path */
+    const cust = await createCustomerRow({
+      first:first, last:last,
+      phone:$("lPhone").value.trim(), email:$("lEmail").value.trim(),
+      street:$("lAddr").value.trim(), city:$("lCity").value.trim(),
+      state:"NY", zip:null,
+      lead_source:composeSource(lSrcSel,"lSourceDetail")
+    });
     const appt=$("lAppt").value ? new Date($("lAppt").value).toISOString() : null;
     const {error:e2} = await db.from("jobs").insert({
       customer_id:cust.id,job_type:$("lType").value,status:"Lead",
@@ -867,7 +901,8 @@ $("saveLead").addEventListener("click", async ()=>{
     if(e2) throw e2;
     toast("Lead saved"+($("lEmg").checked?" — 🚨 flagged":""));
     $("leadMsg").textContent="Lead saved. It's in the list below — tap it for Add to Calendar and Start Quote.";
-    ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt"].forEach(id=>$(id).value="");
+    ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
+    lSrcSel=null; drawSrcChips();
     $("lEmg").checked=false; leadTemp="😐";
     document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="😐"));
     loadLeads();
@@ -1003,7 +1038,7 @@ function startQuoteFromLead(l){
   $("cFirst").value=cu.first_name||""; $("cLast").value=cu.last_name||"";
   $("cPhone").value=cu.phone||""; $("cEmail").value=cu.email||"";
   $("cAddr").value=l.street_address||""; $("cCity").value=l.city||"";
-  if(cu.lead_source) $("cSource").value=cu.lead_source;
+  setCustMode("locked", cu.lead_source); /* Build 6: source already on file, never overwritten */
   if(TRADES[l.job_type]) { currentTrade=l.job_type; renderTrades(); renderBuilder(); }
   renderLeadBanner();
   document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
@@ -1027,10 +1062,14 @@ function renderLeadBanner(){
       resetOptions(); phases=[]; renderLines();
       document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
       ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput"].forEach(id=>{ if($(id)) $(id).value=""; });
-      renderLeadBanner(); toast("Edit cancelled — the saved quote is untouched");
+      const hadPhotoWork = builderPhotos.length>0;
+      builderPhotos=[]; pendingQuoteId=null; renderBPhotos(); setCustMode("search");
+      renderLeadBanner(); toast("Edit cancelled — prices and lines untouched"+(hadPhotoWork?" (photo changes were already saved)":""));
       return;
     }
-    pendingLead=null; renderLeadBanner(); toast("Detached — save will create a fresh customer");
+    pendingLead=null; renderLeadBanner();
+    setCustMode("new"); /* Build 6: fresh customer needs the source chips back */
+    toast("Detached — save will create a fresh customer (tap their lead source)");
   });
 }
 
@@ -1579,6 +1618,7 @@ function buildAndShowPreview(){
   const pkgTrades=[...new Set(allLines.filter(l=>l.trade).map(l=>l.trade))];
   showPreview({
     qNum:null,
+    photos:builderPhotos.length?builderPhotos:null, /* Build 6: strip photos preview live */
     jobType:pkgTrades.length>1?pkgTrades.map(tradeName).join(" + "):tradeName(pkgTrades[0]||currentTrade),
     customer:{name:(($("cFirst").value+" "+$("cLast").value).trim()||"Customer"),
       phone:$("cPhone").value.trim(),email:$("cEmail").value.trim(),
@@ -1972,16 +2012,26 @@ async function saveQuote(){
       }
     } else if(pendingLead){
       cust={id:pendingLead.customerId};
+    } else if(pickedCustomer){
+      /* Build 6 Front Door: existing customer picked — reuse their row, never a duplicate.
+         Contact edits sync non-fatally (same pattern as edit mode); lead_source is
+         NEVER overwritten — the source is how they FIRST found you. */
+      cust={id:pickedCustomer.id};
+      const {error:eCu}=await db.from("customers").update({
+        first_name:first,last_name:last,
+        phone:$("cPhone").value.trim()||null,email:$("cEmail").value.trim()||null
+      }).eq("id",cust.id);
+      if(eCu) toast("Contact update skipped: "+eCu.message);
     } else {
-      const {data,error:e1} = await db.from("customers").insert({
-        first_name:first,last_name:last,phone:$("cPhone").value.trim()||null,
-        email:$("cEmail").value.trim()||null,
-        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
-        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
-        lead_source:$("cSource").value
-      }).select().single();
-      if(e1) throw e1;
-      cust=data;
+      /* Build 6 D5: same create path as the Leads tab */
+      if(!cSrcSel){ toast("Tap a lead source for this new customer"); btn.disabled=false; btn.textContent="Save"; return; }
+      cust = await createCustomerRow({
+        first:first, last:last,
+        phone:$("cPhone").value.trim(), email:$("cEmail").value.trim(),
+        street:$("cAddr").value.trim(), city:$("cCity").value.trim(),
+        state:$("cState").value.trim()||"NY", zip:$("cZip").value.trim(),
+        lead_source:composeSource(cSrcSel,"cSourceDetail")
+      });
     }
     /* job type reflects every trade with a package across all options */
     const tradeName = t => t==="Repair" ? "Roof Repair" : t;
@@ -2065,7 +2115,13 @@ async function saveQuote(){
       const {error:eLi}=await db.from("quote_line_items").delete().eq("quote_id",quote.id);
       if(eLi) throw eLi;
     } else {
+      /* Build 6 D1: if photos were added in the builder, the quote's ID was
+         pre-generated at first photo — the row is created WITH that ID so the
+         already-uploaded photos are on their final storage path. No photos =
+         DB generates the ID exactly as before. */
       const {data,error:e3} = await db.from("quotes").insert({
+        ...(pendingQuoteId?{id:pendingQuoteId}:{}),
+        ...(builderPhotos.length?{photos:builderPhotos}:{}),
         job_id:job.id,quote_number:qNum,title:jobType+" Quote",
         tier:filled[0].tier||"Standard",status:"Draft",markup_pct:0,
         notes:notes,
@@ -2097,7 +2153,10 @@ async function saveQuote(){
     editingQuote=null; pendingLead=null; renderLeadBanner();
     resetOptions(); phases=[]; renderLines();
     document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
-    ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput"].forEach(id=>{ if($(id)) $(id).value=""; });
+    ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput","cSourceDetail","custSearch"].forEach(id=>{ if($(id)) $(id).value=""; });
+    /* Build 6 reset: photos belong to the saved quote now; picker back to search */
+    builderPhotos=[]; pendingQuoteId=null; pickedCustomer=null; cSrcSel=null;
+    renderBPhotos(); drawSrcChips(); setCustMode("search");
     (TRADES[currentTrade].toggles||[]).forEach(tg=>{ if($(tg.id)) $(tg.id).checked=false; });
     (TRADES[currentTrade].selects||[]).forEach(s=>{ if($(s.id)) $(s.id).value=0; });
   }catch(err){
@@ -2228,7 +2287,9 @@ function renderChips(){
     const n = o==="All" ? quotesCache.length : quotesCache.filter(q=>q.status===o).length;
     return `<button class="chip ${statusFilter===o?'sel':''}" data-f="${o}">${o} (${n})</button>`;
   }).join("");
-  document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+  /* Build 6 fix: scope to THIS row — the global .chip selector was also grabbing
+     lead-filter chips and the new source chips, hijacking their taps */
+  $("chipRow").querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
     statusFilter=c.dataset.f; openQuoteId=null;
     renderChips(); renderQuoteList(null);
   }));
@@ -2633,12 +2694,16 @@ function loadQuoteIntoBuilder(q, mode){
   $("cPhone").value=cu.phone||""; $("cEmail").value=cu.email||"";
   $("cAddr").value=q.jobs?.street_address||""; $("cCity").value=q.jobs?.city||"";
   $("cState").value=q.jobs?.state||"NY"; $("cZip").value=q.jobs?.zip||"";
-  if(cu.lead_source && $("cSource")) $("cSource").value=cu.lead_source;
+  setCustMode("locked", cu.lead_source); /* Build 6: source already on file, never overwritten */
   if(mode==="edit"){
     editingQuote={id:q.id, number:q.quote_number, jobId:q.job_id, customerId:q.jobs?.customer_id||null};
     pendingLead=null;
+    /* Build 6 Part 1: the quote's saved photos load into the builder strip and are
+       managed in place — adds/removes in edit mode persist to the quote immediately */
+    builderPhotos=[...(q.photos||[])]; pendingQuoteId=null; renderBPhotos();
   } else { /* duplicate-as-new: fresh quote, SAME customer + job (the change-order path) */
     editingQuote=null;
+    builderPhotos=[]; pendingQuoteId=null; renderBPhotos(); /* Build 6: photos stay on the original */
     pendingLead = q.job_id
       ? {jobId:q.job_id, customerId:q.jobs?.customer_id,
          name:((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"Customer"}
@@ -2656,6 +2721,178 @@ function loadQuoteIntoBuilder(q, mode){
   if(flags.est) setTimeout(()=>toast("⚠️ Some line costs were re-estimated — recheck custom lines' cost fields"),2200);
 }
 
+/* ============ BUILD 6 (v8.4) — FRONT DOOR + PHOTOS IN THE BUILDER ============
+   Part 1: photos attach while the quote is being built. First photo pre-generates
+   the quote's ID (crypto.randomUUID) and uploads land on their FINAL storage path;
+   Save creates the row with that same ID. Edit mode manages the saved photos in
+   place (persisted immediately). Duplicates start photo-empty.
+   Part 2: one customer front door. Type-ahead picker (name/phone/street) with a
+   New-customer path; Leads tab and New Quote share createCustomerRow(); picking
+   an existing customer creates a NEW job per quote (D3) and never touches their
+   original lead_source. Sources are tap-to-pick buckets + optional detail, stored
+   as "Bucket · detail" in the existing lead_source column (no schema change). */
+
+const SRC_BUCKETS=["Google","Website","Referral","Realtor","Repeat Customer","Job Sign","Truck/Yard Sign","Facebook","Other"];
+let cSrcSel=null, lSrcSel=null, pickedCustomer=null;
+let builderPhotos=[], pendingQuoteId=null;
+
+function renderSrcChipsInto(elId, sel, onPick){
+  const el=$(elId); if(!el) return;
+  el.innerHTML=SRC_BUCKETS.map(b=>
+    `<button type="button" class="chip${sel===b?" sel":""}" data-src="${b}">${b}</button>`).join("");
+  el.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",e=>{
+    e.preventDefault(); onPick(c.dataset.src);
+  }));
+}
+function drawSrcChips(){
+  renderSrcChipsInto("lSrcChips", lSrcSel, b=>{ lSrcSel=(lSrcSel===b?null:b); drawSrcChips(); });
+  renderSrcChipsInto("cSrcChips", cSrcSel, b=>{ cSrcSel=(cSrcSel===b?null:b); drawSrcChips(); });
+}
+function composeSource(bucket, detailId){
+  const d=($(detailId)&&$(detailId).value.trim())||"";
+  return bucket ? (d ? bucket+" · "+d : bucket) : null;
+}
+/* D5: the ONE customer-create path — Leads tab and New Quote both land here */
+async function createCustomerRow(f){
+  const {data,error}=await db.from("customers").insert({
+    first_name:f.first||"—", last_name:f.last||"—",
+    phone:f.phone||null, email:f.email||null,
+    street_address:f.street||null, city:f.city||null,
+    state:f.state||"NY", zip:f.zip||null,
+    lead_source:f.lead_source||null
+  }).select().single();
+  if(error) throw error;
+  return data;
+}
+
+/* ---------- Front Door: customer picker on the New Quote screen ---------- */
+function setCustMode(mode, srcText){
+  const pick=$("custPickWrap"), bar=$("custPickedBar"), fields=$("custFields"),
+        srcW=$("srcWrap"), srcL=$("srcLocked");
+  if(!pick||!bar||!fields) return;
+  if(mode==="search"){
+    pickedCustomer=null;
+    pick.style.display=""; bar.style.display="none"; fields.style.display="none";
+    $("custResults").innerHTML=""; $("custSearch").value="";
+  } else if(mode==="new"){
+    pickedCustomer=null;
+    pick.style.display="none"; fields.style.display="";
+    srcW.style.display=""; srcL.style.display="none";
+    bar.style.display="";
+    bar.innerHTML=`<span>➕ <b>New customer</b> — fill in the details below</span><button type="button" id="custBackBtn">🔍 find existing</button>`;
+    $("custBackBtn").addEventListener("click",()=>{ clearCustFields(); setCustMode("search"); });
+  } else if(mode==="picked"){
+    pick.style.display="none"; fields.style.display="";
+    srcW.style.display="none";
+    srcL.style.display=""; srcL.textContent="Source on file: "+(srcText||"—")+" (kept from first contact — not changed by this quote)";
+    const nm=((pickedCustomer&&(pickedCustomer.first_name||"")+" "+(pickedCustomer.last_name||""))||"").trim()||"Customer";
+    bar.style.display="";
+    bar.innerHTML=`<span>Quoting <b>${esc(nm)}</b> — existing customer, new job. No duplicate.</span><button type="button" id="custBackBtn">✕ change</button>`;
+    $("custBackBtn").addEventListener("click",()=>{ clearCustFields(); setCustMode("search"); });
+  } else { /* "locked": lead conversion, edit, duplicate — their own banners handle context */
+    pick.style.display="none"; bar.style.display="none"; fields.style.display="";
+    srcW.style.display="none";
+    srcL.style.display=""; srcL.textContent="Source on file: "+(srcText||"—");
+  }
+}
+function clearCustFields(){
+  ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","cSourceDetail"].forEach(id=>{ if($(id)) $(id).value=""; });
+  if($("cState")) $("cState").value="NY";
+  cSrcSel=null; drawSrcChips();
+}
+let custSearchT=null;
+$("custSearch").addEventListener("input",()=>{
+  clearTimeout(custSearchT);
+  const t=$("custSearch").value.trim();
+  if(t.length<2){ $("custResults").innerHTML=""; return; }
+  custSearchT=setTimeout(()=>runCustSearch(t),250);
+});
+async function runCustSearch(t){
+  /* D4: search name + phone + street. Server filters on the first word; every
+     typed word must then match somewhere in the record (handles "John Smith"). */
+  const words=t.toLowerCase().split(/\s+/).filter(Boolean);
+  const w0=words[0].replace(/[%,()]/g,"");
+  if(!w0){ $("custResults").innerHTML=""; return; }
+  const pat="%"+w0+"%";
+  const {data,error}=await db.from("customers")
+    .select("id,first_name,last_name,phone,email,street_address,city,state,zip,lead_source")
+    .or(`first_name.ilike.${pat},last_name.ilike.${pat},phone.ilike.${pat},street_address.ilike.${pat}`)
+    .limit(12);
+  if(error){ $("custResults").innerHTML=`<p class="note">Search failed: ${esc(error.message)}</p>`; return; }
+  if($("custSearch").value.trim().toLowerCase().split(/\s+/)[0]!==words[0]) return; /* stale response */
+  const hits=(data||[]).filter(c=>{
+    const hay=((c.first_name||"")+" "+(c.last_name||"")+" "+(c.phone||"")+" "+(c.street_address||"")+" "+(c.city||"")).toLowerCase();
+    return words.every(w=>hay.indexOf(w)>=0);
+  }).slice(0,8);
+  $("custResults").innerHTML = hits.length
+    ? hits.map(c=>`<div class="custHit" data-cid="${c.id}"><b>${esc(((c.first_name||"")+" "+(c.last_name||"")).trim()||"—")}</b>
+        <div class="meta">${esc(c.phone||"no phone")} · ${esc(c.street_address||"no street")}${c.city?", "+esc(c.city):""}</div></div>`).join("")
+    : `<p class="note">No match — tap ➕ New customer below.</p>`;
+  const byId={}; hits.forEach(c=>byId[c.id]=c);
+  document.querySelectorAll(".custHit[data-cid]").forEach(h=>h.addEventListener("click",()=>pickCustomer(byId[h.dataset.cid])));
+}
+async function pickCustomer(c){
+  if(!c) return;
+  pickedCustomer=c;
+  $("cFirst").value=c.first_name||""; $("cLast").value=c.last_name||"";
+  $("cPhone").value=c.phone||""; $("cEmail").value=c.email||"";
+  /* street auto-fills from the customer's LAST job (D3) but stays editable */
+  let street=c.street_address||"", city=c.city||"", st=c.state||"NY", zip=c.zip||"";
+  try{
+    const {data:j}=await db.from("jobs").select("street_address,city,state,zip")
+      .eq("customer_id",c.id).order("created_at",{ascending:false}).limit(1);
+    if(j&&j[0]){ street=j[0].street_address||street; city=j[0].city||city; st=j[0].state||st; zip=j[0].zip||zip; }
+  }catch(_){}
+  $("cAddr").value=street; $("cCity").value=city; $("cState").value=st; $("cZip").value=zip;
+  setCustMode("picked", c.lead_source);
+}
+$("custNewBtn").addEventListener("click",()=>{ clearCustFields(); setCustMode("new"); });
+
+/* ---------- Part 1: builder photo strip ---------- */
+function renderBPhotos(){
+  const el=$("bPhotoStrip"); if(!el) return;
+  el.innerHTML=builderPhotos.map((u,i)=>
+    `<div class="bPh"><img src="${u}" alt="quote photo"><button type="button" data-bphd="${i}">✕</button></div>`).join("");
+  el.querySelectorAll("[data-bphd]").forEach(b=>b.addEventListener("click",e=>{
+    e.preventDefault(); deleteBuilderPhoto(Number(b.dataset.bphd));
+  }));
+}
+$("bPhotoBtn").addEventListener("click",()=>$("bPhotoInput").click());
+$("bPhotoInput").addEventListener("change",async e=>{
+  const files=[...e.target.files]; e.target.value="";
+  if(!files.length) return;
+  /* D1: first photo mints the quote's ID; uploads go straight to the final path */
+  if(!editingQuote && !pendingQuoteId) pendingQuoteId=crypto.randomUUID();
+  const qid=editingQuote?editingQuote.id:pendingQuoteId;
+  toast("Uploading "+files.length+" photo"+(files.length>1?"s":"")+"…");
+  try{
+    for(const f of files){ builderPhotos.push(await uploadQuotePhoto(qid,f)); }
+    if(editingQuote){ /* edit mode persists immediately — same as the detail button */
+      const {error}=await db.from("quotes").update({photos:builderPhotos}).eq("id",editingQuote.id);
+      if(error) throw error;
+      const q=quotesCache.find(x=>x.id===editingQuote.id); if(q) q.photos=[...builderPhotos];
+    }
+    renderBPhotos();
+    toast(builderPhotos.length+" photo"+(builderPhotos.length!==1?"s":"")+" on this quote — first is the cover");
+  }catch(err){ renderBPhotos(); toast("Photo upload failed: "+(err.message||"unknown error")); }
+});
+async function deleteBuilderPhoto(i){
+  const url=builderPhotos[i]; if(!url) return;
+  if(!confirm("Remove this photo from the quote?")) return;
+  if(editingQuote){ /* DB row first — a photo must never vanish from storage while the quote still lists it */
+    const next=builderPhotos.filter((_,x)=>x!==i);
+    const {error}=await db.from("quotes").update({photos:next}).eq("id",editingQuote.id);
+    if(error){ toast("Could not remove photo: "+error.message); return; }
+    const q=quotesCache.find(x=>x.id===editingQuote.id); if(q) q.photos=[...next];
+    builderPhotos=next;
+  } else {
+    builderPhotos.splice(i,1);
+  }
+  const path=url.split("/quote-photos/")[1];
+  if(path) db.storage.from("quote-photos").remove([decodeURIComponent(path)]);
+  renderBPhotos();
+}
+
 /* ============ AUTH + BOOT (v7.5) ============ */
 let appBooted=false;
 function initApp(){
@@ -2665,6 +2902,7 @@ function initApp(){
   renderRates();
   renderLines();
   renderPhasing();
+  drawSrcChips(); setCustMode("search"); renderBPhotos(); /* Build 6 */
   loadLeads();
   (async ()=>{
     const {error} = await db.from("quotes").select("id",{head:true,count:"exact"});
