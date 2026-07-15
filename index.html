@@ -181,6 +181,22 @@
   .chip.sel{background:var(--ink);border-color:var(--ink);color:#fff}
   .tempRow{display:flex;gap:8px;margin-top:6px}
   /* Build 6 (v8.4): lead-source chips + customer picker + builder photo strip */
+  /* Build 7 (v8.5) "The Road": Schedule screen + zones + piggyback nudge */
+  .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
+  .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
+  .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
+  .dayHead{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+  .dayHead.today{color:var(--orange-deep)}
+  .schedRow{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  .schedRow .when{font-weight:800;font-size:15px}
+  .schedRow .city{font-weight:800;font-size:16px;text-transform:uppercase}
+  .schedRow .topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .schedRow.needs{border-left:4px solid var(--orange)}
+  .schedPanel{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .piggyBanner{background:#fff8ec;border:1.5px solid var(--orange);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
+  .piggyBanner button{margin-top:6px}
+  .zonePrompt{background:#f4f1ec;border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+  .zonePrompt .chipRow{margin-bottom:0;flex-wrap:wrap}
   .srcChips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
   .srcChips .chip{margin:0}
   #custResults{margin-top:8px}
@@ -401,11 +417,12 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v8.4 — Front Door</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v8.5 — The Road</div>
   <div id="connDot">connecting…</div>
 </header>
 <nav>
   <button class="active" data-s="leads">Leads</button>
+  <button data-s="sched">Schedule</button>
   <button data-s="new">New Quote</button>
   <button data-s="list">Quotes</button>
   <button data-s="rates">Rate Card</button>
@@ -434,6 +451,8 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
       <label>Lead source — tap one</label>
       <div class="srcChips" id="lSrcChips"></div>
       <input id="lSourceDetail" placeholder="Who exactly? (optional — Jane Smith, Keller Williams)">
+      <div id="lZonePrompt"></div>
+      <div id="lPiggy"></div>
       <div class="row2" style="margin-top:10px">
         <div><label>Appointment (optional)</label><input id="lAppt" type="datetime-local"></div>
         <div></div>
@@ -460,6 +479,13 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <div class="chipRow" id="leadChips"></div>
     <div id="leadList"><p class="note">Loading…</p></div>
     <button class="btn ghost" id="showMore" style="display:none">Show more</button>
+  </section>
+
+  <section id="s-sched" class="screen">
+    <h2>Needs scheduling — leads with no date yet</h2>
+    <div id="needsSched"><p class="note">Loading…</p></div>
+    <h2>The road ahead</h2>
+    <div id="schedList"><p class="note">Loading…</p></div>
   </section>
 
   <section id="s-new" class="screen">
@@ -860,6 +886,7 @@ document.querySelectorAll("nav button").forEach(b=>{
     $("s-"+b.dataset.s).classList.add("active");
     if(b.dataset.s==="list") loadQuotes();
     if(b.dataset.s==="leads") loadLeads();
+    if(b.dataset.s==="sched") loadSchedule(); /* Build 7 */
   });
 });
 
@@ -892,10 +919,29 @@ $("saveLead").addEventListener("click", async ()=>{
       lead_source:composeSource(lSrcSel,"lSourceDetail")
     });
     const appt=$("lAppt").value ? new Date($("lAppt").value).toISOString() : null;
+    /* Build 7: resolve the zone; Milford + unknown towns must be answered first */
+    const cityVal=$("lCity").value.trim();
+    let leadZone=null;
+    if(cityVal){
+      const zr=resolveZone(cityVal);
+      if(!zr.ask) leadZone=zr.zone;
+      else if(pendingLeadZone!==null) leadZone=pendingLeadZone;
+      else {
+        renderZonePrompt("lZonePrompt", cityVal, !!zr.milford, async z=>{
+          pendingLeadZone=z;
+          if(!zr.milford) await learnTown(cityVal, z);
+          toast(z===0?"Marked one-off — tap Save lead again":"Zone "+z+" — tap Save lead again");
+        });
+        toast(zr.milford?"Which Milford? Tap a zone first":"New town — tap its zone first");
+        btn.disabled=false; btn.textContent="Save lead";
+        return;
+      }
+    }
     const {error:e2} = await db.from("jobs").insert({
       customer_id:cust.id,job_type:$("lType").value,status:"Lead",
-      street_address:$("lAddr").value.trim()||null,city:$("lCity").value.trim()||null,state:"NY",
+      street_address:$("lAddr").value.trim()||null,city:cityVal||null,state:"NY",
       appointment:appt,temperature:leadTemp,emergency:$("lEmg").checked,
+      zone:leadZone, /* Build 7 */
       notes:$("lNote").value.trim()||null
     });
     if(e2) throw e2;
@@ -903,6 +949,7 @@ $("saveLead").addEventListener("click", async ()=>{
     $("leadMsg").textContent="Lead saved. It's in the list below — tap it for Add to Calendar and Start Quote.";
     ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
     lSrcSel=null; drawSrcChips();
+    resetLeadZoneState(); loadSchedule(); /* Build 7 */
     $("lEmg").checked=false; leadTemp="😐";
     document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="😐"));
     loadLeads();
@@ -2893,6 +2940,305 @@ async function deleteBuilderPhoto(i){
   renderBPhotos();
 }
 
+/* ============ BUILD 7 (v8.5) — THE ROAD ============
+   Zones (D1 locked July 13) + Schedule screen + piggyback nudge + reminder.
+   town_zones table = the self-teaching map (migration kreck-build7.sql).
+   jobs.zone = the per-lead answer (Milford picks live ONLY here — never learned). */
+
+const ZONES = {
+  1:{name:"Tri-State",        towns:["port jervis","matamoras","sparrowbush","westfall"]},
+  2:{name:"Sullivan County",  towns:["narrowsburg","callicoon","eldred","monticello","liberty","wurtsboro","barryville","jeffersonville","bethel","white lake"]},
+  3:{name:"Pike/Wayne PA",    towns:["dingmans ferry","shohola","greentown","hawley","lords valley","lackawaxen"]},
+  4:{name:"Sussex County NJ", towns:["montague","branchville","sussex","newton","wantage"]},
+  5:{name:"Orange County corridor", towns:["middletown","warwick","goshen","otisville","slate hill","westtown","florida","chester"]}
+};
+function normTown(s){
+  let t=String(s||"").toLowerCase().trim().replace(/[.,'’]/g,"").replace(/\s+/g," ");
+  t=t.replace(/^pt\.? /,"port ").replace(/^mt\.? /,"mount ");
+  if(t==="pj"||t==="port j") t="port jervis";
+  return t;
+}
+let townZoneCache = {}; /* learned town -> zone (0 = one-off/other) */
+async function loadTownZones(){
+  try{
+    const {data,error}=await db.from("town_zones").select("town,zone");
+    if(!error) (data||[]).forEach(r=>{ townZoneCache[r.town]=r.zone; });
+  }catch(_){}
+}
+/* returns {zone:number|null, ask:boolean, milford?:true} — zone 0 = one-off */
+function resolveZone(city){
+  const t=normTown(city);
+  if(!t) return {zone:null, ask:false};
+  if(t==="milford") return {zone:null, ask:true, milford:true};
+  for(const z of Object.keys(ZONES)) if(ZONES[z].towns.includes(t)) return {zone:+z, ask:false};
+  if(t in townZoneCache) return {zone:townZoneCache[t], ask:false};
+  return {zone:null, ask:true};
+}
+async function learnTown(city, zone){
+  const t=normTown(city);
+  if(!t || t==="milford") return; /* the Milford rule: never remembered */
+  townZoneCache[t]=zone;
+  try{ await db.from("town_zones").insert({town:t, zone:zone}); }catch(_){}
+}
+function zoneBadge(z){
+  if(z===null||z===undefined||z==="") return "";
+  if(+z===0) return '<span class="zBadge z0">ONE-OFF</span>';
+  const Z=ZONES[+z]; if(!Z) return "";
+  return '<span class="zBadge z'+z+'">Z'+z+' · '+Z.name+'</span>';
+}
+function jobZone(l){ /* stored answer wins; else resolve from city */
+  if(l.zone!==null && l.zone!==undefined) return l.zone;
+  const r=resolveZone(l.city);
+  return r.ask ? null : r.zone;
+}
+
+/* ---- zone prompt (Milford + unknown towns) ---- */
+function renderZonePrompt(containerId, city, milford, onPick){
+  const el=$(containerId); if(!el) return;
+  const chips=[1,2,3,4,5].map(z=>'<button class="chip" data-zp="'+z+'">Zone '+z+' — '+ZONES[z].name+'</button>').join("")
+    +'<button class="chip" data-zp="0">One-off / other</button>';
+  el.innerHTML='<div class="zonePrompt"><b>'+(milford?'Milford — which one?':'New town: "'+city+'"')
+    +'</b><div class="note" style="margin:4px 0 8px">'+(milford
+      ?'People say Milford from 20 minutes out. Zone 1 (Tri-State) or Zone 3 (Pike/Wayne PA)?'
+      :'Which zone is this? I\u2019ll remember it from now on.')
+    +'</div><div class="chipRow">'+chips+'</div></div>';
+  el.querySelectorAll("[data-zp]").forEach(b=>b.addEventListener("click",e=>{
+    e.preventDefault();
+    el.innerHTML="";
+    onPick(+b.dataset.zp);
+  }));
+}
+
+/* ---- lead form wiring: zone gate + piggyback nudge ---- */
+let pendingLeadZone=null; /* the per-lead answer for Milford/unknown/one-off */
+function resetLeadZoneState(){ pendingLeadZone=null; $("lZonePrompt").innerHTML=""; $("lPiggy").innerHTML=""; }
+$("lCity").addEventListener("change",()=>{
+  resetLeadZoneState();
+  const city=$("lCity").value.trim(); if(!city) return;
+  const r=resolveZone(city);
+  if(r.ask){
+    renderZonePrompt("lZonePrompt", city, !!r.milford, async z=>{
+      pendingLeadZone=z;
+      if(!r.milford) await learnTown(city, z);
+      toast(z===0?"Marked one-off":"Zone "+z+" — "+ZONES[z].name);
+      showPiggy("lPiggy", z, null);
+    });
+  } else {
+    showPiggy("lPiggy", r.zone, null);
+  }
+});
+/* scan upcoming same-zone appointments; banner nudges BEFORE a date is committed */
+function upcomingInZone(zone, excludeId){
+  if(zone===null||zone===undefined||+zone===0) return [];
+  const now=Date.now();
+  return (schedCache||[]).filter(l=>l.id!==excludeId && l.appointment
+    && new Date(l.appointment).getTime()>=now-60*60*1000
+    && jobZone(l)===+zone)
+    .sort((a,b)=>new Date(a.appointment)-new Date(b.appointment));
+}
+function piggyLabel(l){
+  const cu=l.customers||{};
+  const d=new Date(l.appointment);
+  return d.toLocaleDateString("en-US",{weekday:"long"})+" — "
+    +((cu.first_name||"")+" "+(cu.last_name||"")).trim()+" estimate, "
+    +d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})+", "+(l.city||"");
+}
+function showPiggy(containerId, zone, excludeId, applyFn){
+  const el=$(containerId); if(!el) return;
+  const hits=upcomingInZone(zone, excludeId);
+  if(!hits.length){ el.innerHTML=""; return; } /* silent when it saves no drive */
+  const h=hits[0];
+  el.innerHTML='<div class="piggyBanner">📍 Already in Zone '+jobZone(h)+' ('+(ZONES[jobZone(h)]||{}).name+') '
+    +piggyLabel(h)+'.<br><button class="btn ghost" id="'+containerId+'Go" style="margin-top:8px">Piggyback this one?</button></div>';
+  $(containerId+"Go").addEventListener("click",e=>{
+    e.preventDefault();
+    const base=new Date(h.appointment);
+    const slot=new Date(base.getTime()+2*60*60*1000); /* same day, 2 hrs after */
+    const pad=n=>String(n).padStart(2,"0");
+    const val=slot.getFullYear()+"-"+pad(slot.getMonth()+1)+"-"+pad(slot.getDate())+"T"+pad(slot.getHours())+":"+pad(slot.getMinutes());
+    if(applyFn){ applyFn(val); } else { $("lAppt").value=val; }
+    toast("Piggybacked — same trip, adjust the time if needed");
+  });
+}
+
+/* ---- reminder text (D2) — sign-off follows whoever is signed in ---- */
+let currentUserEmail="";
+function senderName(){
+  const e=(currentUserEmail||"").toLowerCase();
+  if(e.startsWith("ti@")) return "Ti";
+  if(e.startsWith("chris")) return "Chris";
+  return "";
+}
+function composeReminderText(l){
+  const d=new Date(l.appointment);
+  const day=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const time=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  const loc=[l.street_address,l.city].filter(Boolean).join(", ");
+  const sig=senderName();
+  return "Kreck Contracting — confirming your estimate appointment "+day+" at "+time
+    +(loc?" at "+loc:"")+". Reply here if anything changes."+(sig?" — "+sig:"");
+}
+function sendReminder(l){
+  const cu=l.customers||{};
+  if(!cu.phone){ toast("No phone number on this customer"); return; }
+  const phone=String(cu.phone).replace(/[^\d+]/g,"");
+  toast("Opening Messages to "+(cu.first_name||"customer")+" — just hit send");
+  location.href="sms:"+phone+"&body="+encodeURIComponent(composeReminderText(l));
+}
+
+/* ---- the Schedule screen ---- */
+let schedCache=[];
+let schedOpenId=null;
+let schedShowLater=false;
+async function loadSchedule(){
+  $("needsSched").innerHTML='<p class="note">Loading…</p>';
+  $("schedList").innerHTML='<p class="note">Loading…</p>';
+  const {data,error}=await db.from("jobs")
+    .select("id,job_type,status,appointment,zone,temperature,emergency,notes,created_at,street_address,city,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
+    .limit(1000);
+  if(error){
+    $("needsSched").innerHTML='<p class="note">Could not load: '+error.message+'. If it mentions a missing column or table, run kreck-build7.sql in Supabase first.</p>';
+    $("schedList").innerHTML="";
+    return;
+  }
+  schedCache=(data||[]).filter(j=>j.status!=="Lost");
+  renderNeedsSched();
+  renderSchedule();
+}
+function schedRowHtml(l, needs){
+  const cu=l.customers||{};
+  const who=((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"(no name)";
+  const z=jobZone(l);
+  const when=l.appointment?new Date(l.appointment).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}):"";
+  return '<div class="schedRow'+(needs?' needs':'')+'" data-sched="'+l.id+'">'
+    +'<div class="topline">'+(needs?"":'<span class="when">'+when+'</span>')
+    +'<span class="who">'+who+'</span>'
+    +'<span class="city">'+(l.city||"—")+'</span>'
+    +zoneBadge(z)
+    +(l.emergency?'<span>🚨</span>':"")
+    +'</div>'
+    +'<div class="meta" style="font-size:13px;color:var(--muted)">'+(l.job_type||"")+(cu.phone?" · "+cu.phone:"")+'</div>'
+    +(schedOpenId===l.id?schedPanelHtml(l,needs):"")
+    +'</div>';
+}
+function schedPanelHtml(l, needs){
+  const pad=n=>String(n).padStart(2,"0");
+  let val="";
+  if(l.appointment){ const d=new Date(l.appointment);
+    val=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes()); }
+  return '<div class="schedPanel">'
+    +'<div id="spZonePrompt"></div><div id="spPiggy"></div>'
+    +'<label>'+(needs?"Set the appointment":"Reschedule")+'</label>'
+    +'<input type="datetime-local" id="spWhen" value="'+val+'">'
+    +'<div class="chipRow" style="margin-top:10px">'
+    +'<button class="chip" data-spsave="'+l.id+'">💾 Save date</button>'
+    +(l.appointment?'<button class="chip" data-spremind="'+l.id+'">💬 Send reminder</button>':"")
+    +(l.appointment?'<button class="chip" data-spics="'+l.id+'">📅 Add to Calendar</button>':"")
+    +'</div></div>';
+}
+function renderNeedsSched(){
+  const needs=schedCache.filter(l=>l.status==="Lead" && !l.appointment)
+    .sort((a,b)=>{ if(a.emergency!==b.emergency) return a.emergency?-1:1;
+      return new Date(b.created_at)-new Date(a.created_at); });
+  $("needsSched").innerHTML = needs.length
+    ? needs.map(l=>schedRowHtml(l,true)).join("")
+    : '<p class="note">Every open lead has a date. ✓</p>';
+  wireSchedRows("needsSched", true);
+}
+function renderSchedule(){
+  const now=new Date(); const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const horizon=new Date(startToday.getTime()+14*24*60*60*1000); /* D3: this week + next */
+  const upcoming=schedCache.filter(l=>l.appointment && new Date(l.appointment)>=startToday)
+    .sort((a,b)=>new Date(a.appointment)-new Date(b.appointment));
+  const near=upcoming.filter(l=>new Date(l.appointment)<horizon);
+  const later=upcoming.filter(l=>new Date(l.appointment)>=horizon);
+  let html="";
+  let lastDay="";
+  near.forEach(l=>{
+    const d=new Date(l.appointment);
+    const dayKey=d.toDateString();
+    if(dayKey!==lastDay){
+      lastDay=dayKey;
+      const isToday=dayKey===now.toDateString();
+      html+='<div class="dayHead'+(isToday?' today':'')+'">'+(isToday?"TODAY — ":"")
+        +d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})+'</div>';
+    }
+    html+=schedRowHtml(l,false);
+  });
+  if(!near.length) html+='<p class="note">Nothing on the books for the next two weeks.</p>';
+  if(later.length){
+    html+='<div class="dayHead"><button class="chip" id="laterToggle">'+(schedShowLater?"▾":"▸")+' Later ('+later.length+')</button></div>';
+    if(schedShowLater){
+      lastDay="";
+      later.forEach(l=>{
+        const d=new Date(l.appointment); const dayKey=d.toDateString();
+        if(dayKey!==lastDay){ lastDay=dayKey;
+          html+='<div class="dayHead">'+d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})+'</div>'; }
+        html+=schedRowHtml(l,false);
+      });
+    }
+  }
+  $("schedList").innerHTML=html;
+  const lt=$("laterToggle");
+  if(lt) lt.addEventListener("click",e=>{ e.preventDefault(); schedShowLater=!schedShowLater; renderSchedule(); });
+  wireSchedRows("schedList", false);
+}
+function wireSchedRows(containerId, needs){
+  const root=$(containerId);
+  root.querySelectorAll("[data-sched]").forEach(row=>row.addEventListener("click",(ev)=>{
+    /* taps inside the open panel (date input etc.) must not collapse it */
+    let n=ev&&ev.target;
+    while(n&&n!==row){
+      if(n.classList&&n.classList.contains&&n.classList.contains("schedPanel")) return;
+      n=n.parentElement||n.parent;
+    }
+    const id=row.dataset.sched;
+    schedOpenId = schedOpenId===id ? null : id;
+    renderNeedsSched(); renderSchedule();
+    if(schedOpenId){
+      const l=schedCache.find(x=>x.id===schedOpenId);
+      if(l){
+        const z=jobZone(l);
+        if(z===null && l.city){
+          const r=resolveZone(l.city);
+          renderZonePrompt("spZonePrompt", l.city, !!r.milford, async zz=>{
+            if(!r.milford) await learnTown(l.city, zz);
+            await db.from("jobs").update({zone:zz}).eq("id",l.id);
+            l.zone=zz;
+            renderNeedsSched(); renderSchedule();
+            showPiggy("spPiggy", zz, l.id, v=>{ const w=$("spWhen"); if(w) w.value=v; });
+          });
+        } else {
+          showPiggy("spPiggy", z, l.id, v=>{ const w=$("spWhen"); if(w) w.value=v; });
+        }
+      }
+    }
+  }));
+  root.querySelectorAll("[data-spsave]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation(); e.preventDefault();
+    const id=b.dataset.spsave;
+    const w=$("spWhen");
+    if(!w||!w.value){ toast("Pick a date and time first"); return; }
+    const iso=new Date(w.value).toISOString();
+    const {error}=await db.from("jobs").update({appointment:iso}).eq("id",id);
+    if(error){ toast("Save failed: "+error.message); return; }
+    const l=schedCache.find(x=>x.id===id); if(l) l.appointment=iso;
+    schedOpenId=null;
+    toast("Appointment saved");
+    renderNeedsSched(); renderSchedule();
+  }));
+  root.querySelectorAll("[data-spremind]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); e.preventDefault();
+    const l=schedCache.find(x=>x.id===b.dataset.spremind);
+    if(l) sendReminder(l);
+  }));
+  root.querySelectorAll("[data-spics]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); e.preventDefault();
+    const l=schedCache.find(x=>x.id===b.dataset.spics);
+    if(l) downloadIcs(l);
+  }));
+}
+
 /* ============ AUTH + BOOT (v7.5) ============ */
 let appBooted=false;
 function initApp(){
@@ -2904,6 +3250,9 @@ function initApp(){
   renderPhasing();
   drawSrcChips(); setCustMode("search"); renderBPhotos(); /* Build 6 */
   loadLeads();
+  /* Build 7: learned towns + schedule cache + who's signed in (reminder sign-off) */
+  (async ()=>{ await loadTownZones(); loadSchedule(); })();
+  db.auth.getSession().then(({data})=>{ currentUserEmail=(data&&data.session&&data.session.user&&data.session.user.email)||""; }).catch(()=>{});
   (async ()=>{
     const {error} = await db.from("quotes").select("id",{head:true,count:"exact"});
     const dot=$("connDot");
