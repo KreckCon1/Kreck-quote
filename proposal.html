@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Your Proposal — Kreck Contracting · v4</title>
+<title>Your Proposal — Kreck Contracting · v5</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -179,6 +179,7 @@
     color:var(--muted);margin:16px 0 5px}
   #signName{width:100%;padding:13px 14px;font-size:17px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit}
   #signName:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+  /* Build 7.5b (v5): upsell headers hide measurement qtys — customer sees the choice, not the math */
   /* Build 5b hotfix: stop iPad Safari double-tap zoom on rapid taps */
   button,input[type=checkbox],.optCard,.upsChoice{touch-action:manipulation}
   /* Build 5b (v4): customer inputs — all optional (D4), live in the sign card (D5) */
@@ -387,7 +388,7 @@ function renderOptions(){
       <span class="opr" style="color:var(--muted)">—</span>
     </button>` : ""}
     ${upsFor(g.trade).filter(upsVisible).map(u => `
-      <div class="upsHd">${u.group} — ${u.qty} ${u.unit}</div>
+      <div class="upsHd">${u.group}${["SQ","SF","LF","HR","BDL"].includes(String(u.unit||"").toUpperCase())?"":` — ${u.qty} ${u.unit}`}</div>
       ${(u.choices||[]).map(c => `
       <button class="optPick upsPick${upSel[ukey(u)]===c.key ? " sel" : ""}" data-ug="${ukey(u)}" data-uc="${c.key}">
         <span class="radio"></span>
