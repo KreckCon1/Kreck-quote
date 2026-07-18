@@ -182,6 +182,7 @@
   .tempRow{display:flex;gap:8px;margin-top:6px}
   /* Build 6 (v8.4): lead-source chips + customer picker + builder photo strip */
   /* Build 7 (v8.5) "The Road": Schedule screen + zones + piggyback nudge */
+  /* Build 7.5 (v8.6) "Tape Measure": internal job size field (number + unit) on quotes */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -417,7 +418,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v8.5 — The Road</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v8.6 — Tape Measure</div>
   <div id="connDot">connecting…</div>
 </header>
 <nav>
@@ -518,6 +519,10 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
           <div><label>City</label><input id="cCity"></div>
           <div><label>State</label><input id="cState" value="NY"></div>
           <div><label>Zip</label><input id="cZip" inputmode="numeric"></div>
+        </div>
+        <div class="row2">
+          <div><label>Job size — internal only, customer never sees this</label><input id="cSize" inputmode="decimal" placeholder="e.g. 32 (optional)"></div>
+          <div><label>Unit</label><select id="cSizeUnit"><option value="SQ">Squares</option><option value="SQFT">Sq Ft</option><option value="LNFT">Linear Ft</option></select></div>
         </div>
         <div id="srcWrap">
           <label>Lead source — tap one</label>
@@ -2024,7 +2029,7 @@ function renderRates(){
    Post-save affordance in the save-confirmation area. Save itself stays in the
    fixed tape bar (standing rule). Fetches the quote fresh with the exact
    loadQuotes select shape, then runs the one shared pipeline. */
-const QUOTE_SELECT = "id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)";
+const QUOTE_SELECT = "id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)";
 const shareNowButton = quoteId =>
   ` <button class="copyBtn" data-sharenow="${quoteId}" style="background:var(--ok);margin-top:8px">🔗 Share to sign now</button>`;
 document.addEventListener("click", async e=>{
@@ -2086,19 +2091,25 @@ async function saveQuote(){
     const pkgTrades = [...new Set(allLines.filter(l=>l.trade).map(l=>l.trade))];
     const jobType = pkgTrades.length>1 ? pkgTrades.map(tradeName).join(" + ")
                   : tradeName(pkgTrades[0]||currentTrade);
+    /* Build 7.5: internal job size — optional, blank saves as null */
+    const szRaw = ($("cSize")?$("cSize").value.trim():"");
+    const jobSize = szRaw==="" ? null : (isNaN(parseFloat(szRaw)) ? null : parseFloat(szRaw));
+    const jobSizeUnit = jobSize==null ? null : $("cSizeUnit").value;
     let job;
     if(editingQuote){ /* Build 5: same job, refreshed details — status untouched */
       const {data,error:e2} = await db.from("jobs").update({
         job_type:jobType,
         street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
-        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null
+        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
+        job_size:jobSize,job_size_unit:jobSizeUnit
       }).eq("id",editingQuote.jobId).select().single();
       if(e2) throw e2;
       job=data;
     } else if(pendingLead){
       const {data,error:e2} = await db.from("jobs").update({
         job_type:jobType,status:"Quoted",
-        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null
+        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
+        job_size:jobSize,job_size_unit:jobSizeUnit
       }).eq("id",pendingLead.jobId).select().single();
       if(e2) throw e2;
       job=data;
@@ -2106,7 +2117,8 @@ async function saveQuote(){
       const {data,error:e2} = await db.from("jobs").insert({
         customer_id:cust.id,job_type:jobType,status:"Quoted",
         street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
-        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null
+        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
+        job_size:jobSize,job_size_unit:jobSizeUnit
       }).select().single();
       if(e2) throw e2;
       job=data;
@@ -2344,7 +2356,7 @@ function renderChips(){
 async function loadQuotes(){
   $("qList").innerHTML='<p class="note">Loading…</p>';
   const {data,error} = await db.from("quotes")
-    .select("id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)")
+    .select("id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)")
     .order("created_at",{ascending:false}).limit(50);
   if(error){ $("qList").innerHTML='<p class="note">Could not load quotes: '+error.message+'</p>'; return; }
   if(!data.length){ $("qList").innerHTML='<p class="note">No quotes yet.</p>'; return; }
@@ -2741,6 +2753,8 @@ function loadQuoteIntoBuilder(q, mode){
   $("cPhone").value=cu.phone||""; $("cEmail").value=cu.email||"";
   $("cAddr").value=q.jobs?.street_address||""; $("cCity").value=q.jobs?.city||"";
   $("cState").value=q.jobs?.state||"NY"; $("cZip").value=q.jobs?.zip||"";
+  if($("cSize")) $("cSize").value = (q.jobs?.job_size ?? "")===null ? "" : (q.jobs?.job_size ?? "");
+  if($("cSizeUnit")) $("cSizeUnit").value = q.jobs?.job_size_unit || "SQ";
   setCustMode("locked", cu.lead_source); /* Build 6: source already on file, never overwritten */
   if(mode==="edit"){
     editingQuote={id:q.id, number:q.quote_number, jobId:q.job_id, customerId:q.jobs?.customer_id||null};
@@ -2845,6 +2859,8 @@ function setCustMode(mode, srcText){
 function clearCustFields(){
   ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","cSourceDetail"].forEach(id=>{ if($(id)) $(id).value=""; });
   if($("cState")) $("cState").value="NY";
+  if($("cSize")) $("cSize").value="";
+  if($("cSizeUnit")) $("cSizeUnit").value="SQ";
   cSrcSel=null; drawSrcChips();
 }
 let custSearchT=null;
