@@ -184,6 +184,7 @@
   /* Build 7 (v8.5) "The Road": Schedule screen + zones + piggyback nudge */
   /* Build 7.5 (v8.6) "Tape Measure": internal job size field (number + unit) on quotes */
   /* Build 7.5b (v8.6.1) "Quiet Quantities": SQ/SF/LF/HR/BDL qtys hidden on customer scope table (EA stays) */
+  /* Build 7.6 (v8.7) "Mood Ring": color temperature (tap to cycle) + 10 tags + lead filters */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -419,7 +420,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v8.6.1 — Quiet Quantities</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v8.7 — Mood Ring</div>
   <div id="connDot">connecting…</div>
 </header>
 <nav>
@@ -465,9 +466,9 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
       </div>
       <label>Customer temperature</label>
       <div class="tempRow">
-        <button class="tempBtn" data-t="🙂">🙂</button>
-        <button class="tempBtn sel" data-t="😐">😐</button>
-        <button class="tempBtn" data-t="😠">😠</button>
+        <button class="tempBtn" data-t="🟢">🟢</button>
+        <button class="tempBtn sel" data-t="🟡">🟡</button>
+        <button class="tempBtn" data-t="🔴">🔴</button>
       </div>
       <label>Note</label><input id="lNote" placeholder="Gate code, dog's name, what they described…">
       <button class="btn" id="saveLead" style="margin-top:14px">Save lead</button>
@@ -897,7 +898,12 @@ document.querySelectorAll("nav button").forEach(b=>{
 });
 
 /* ============ LEAD SYSTEM ============ */
-let leadTemp = "😐";
+let leadTemp = "🟡";
+/* Build 7.6: color temperature + tags */
+const TAGS=[{e:"🔥",n:"Hot rush"},{e:"💰",n:"Big job"},{e:"📞",n:"Callback needed"},{e:"🤝",n:"Referral"},{e:"🔁",n:"Repeat customer"},{e:"📋",n:"Insurance job"},{e:"⏳",n:"Waiting on customer"},{e:"🏘️",n:"Hemlock Farms / expansion"},{e:"⚠️",n:"Proceed carefully"},{e:"🌶️",n:"Spice pricing"}];
+const tclr=t=>({"🙂":"🟢","😐":"🟡","😠":"🔴"}[t]||t||"🟡"); /* legacy faces map to colors */
+const nextTemp=t=>({"🟢":"🟡","🟡":"🔴","🔴":"🟢"}[tclr(t)]);
+let leadTempFilter=null, leadTagFilter=null;
 let leadsCache = [];
 let openLeadId = null;
 let pendingLead = null; /* set when quoting an existing lead */
@@ -956,8 +962,8 @@ $("saveLead").addEventListener("click", async ()=>{
     ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
     lSrcSel=null; drawSrcChips();
     resetLeadZoneState(); loadSchedule(); /* Build 7 */
-    $("lEmg").checked=false; leadTemp="😐";
-    document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="😐"));
+    $("lEmg").checked=false; leadTemp="🟡";
+    document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="🟡"));
     loadLeads();
   }catch(err){
     console.error(err);
@@ -972,7 +978,7 @@ async function loadLeads(){
   $("leadList").innerHTML='<p class="note">Loading…</p>';
   const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : ["Lead","Lost"];
   const {data,error} = await db.from("jobs")
-    .select("id,job_type,status,appointment,temperature,emergency,notes,created_at,street_address,city,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
+    .select("id,job_type,status,appointment,temperature,tags,emergency,notes,created_at,street_address,city,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
     .in("status",statuses).order("created_at",{ascending:false}).limit(500);
   if(error){ $("leadList").innerHTML='<p class="note">Could not load leads: '+error.message+'. If it mentions a missing column, run the wave-two SQL first.</p>'; return; }
   leadsCache=(data||[]).sort((a,b)=>{
@@ -987,9 +993,18 @@ async function loadLeads(){
 }
 function renderLeadChips(){
   $("leadChips").innerHTML=["Open","Lost","All"].map(o=>
-    `<button class="chip ${leadFilter===o?'sel':''}" data-lf="${o}">${o}</button>`).join("");
+    `<button class="chip ${leadFilter===o?'sel':''}" data-lf="${o}">${o}</button>`).join("")
+    /* Build 7.6: temperature + tag filters */
+    + ["🟢","🟡","🔴"].map(t=>`<button class="chip ${leadTempFilter===t?'sel':''}" data-tf="${t}">${t}</button>`).join("")
+    + TAGS.map(t=>`<button class="chip ${leadTagFilter===t.e?'sel':''}" data-gf="${t.e}" title="${t.n}">${t.e}</button>`).join("");
   document.querySelectorAll("[data-lf]").forEach(c=>c.addEventListener("click",()=>{
     leadFilter=c.dataset.lf; leadLimit=15; openLeadId=null; loadLeads();
+  }));
+  document.querySelectorAll("[data-tf]").forEach(c=>c.addEventListener("click",()=>{
+    leadTempFilter = leadTempFilter===c.dataset.tf ? null : c.dataset.tf; leadLimit=15; renderLeadChips(); renderLeads();
+  }));
+  document.querySelectorAll("[data-gf]").forEach(c=>c.addEventListener("click",()=>{
+    leadTagFilter = leadTagFilter===c.dataset.gf ? null : c.dataset.gf; leadLimit=15; renderLeadChips(); renderLeads();
   }));
 }
 function leadMatches(l,q){
@@ -1000,7 +1015,9 @@ function leadMatches(l,q){
 }
 function renderLeads(){
   const q=$("leadSearch").value.trim();
-  const filtered=leadsCache.filter(l=>leadMatches(l,q));
+  const filtered=leadsCache.filter(l=>leadMatches(l,q)
+    && (!leadTempFilter || tclr(l.temperature)===leadTempFilter)
+    && (!leadTagFilter || (l.tags||[]).includes(leadTagFilter)));
   if(!filtered.length){ $("leadList").innerHTML='<p class="note">'+(q?"No leads match that search.":"No "+leadFilter.toLowerCase()+" leads. The phone will fix that.")+'</p>'; $("showMore").style.display="none"; return; }
   const shown=filtered.slice(0,leadLimit);
   $("showMore").style.display = filtered.length>leadLimit ? "block" : "none";
@@ -1016,7 +1033,9 @@ function renderLeads(){
       detail=`<div class="leadDetail">
         ${contact?`<div class="dMeta">${contact}</div>`:""}
         ${l.street_address?`<div class="dMeta">${l.street_address}${l.city?", "+l.city:""}</div>`:""}
-        <div class="dMeta">Source: ${cu.lead_source||"—"} · Temp: ${l.temperature||"😐"}${l.emergency?" · 🚨 EMERGENCY":""}</div>
+        <div class="dMeta">Source: ${cu.lead_source||"—"}${l.emergency?" · 🚨 EMERGENCY":""}</div>
+        <div class="dMeta">Temp: ${["🟢","🟡","🔴"].map(t=>`<button class="chip ${tclr(l.temperature)===t?'sel':''}" data-settemp="${t}" data-sid="${l.id}">${t}</button>`).join("")}</div>
+        <div class="dMeta">Tags: ${TAGS.map(t=>`<button class="chip ${(l.tags||[]).includes(t.e)?'sel':''}" data-tagtog="${t.e}" data-sid="${l.id}" title="${t.n}">${t.e}</button>`).join("")}</div>
         ${l.notes?`<div class="dMeta">"${l.notes}"</div>`:""}
         <div class="actRow">
           ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">📅 Add to Calendar</button>`:""}
@@ -1028,13 +1047,37 @@ function renderLeads(){
     }
     return `<div class="leadRow ${l.emergency?'emg':''}" data-lead="${l.id}">
       <div><div class="who">${l.emergency?"🚨 ":""}${who}</div>
-      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}</div></div>
-      <div class="temp">${l.temperature||"😐"}</div>
+      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+l.tags.join(""):""}</div></div>
+      <div class="temp" data-tcyc="${l.id}" title="Tap to change">${tclr(l.temperature)}</div>
     </div>${detail}`;
   }).join("");
   document.querySelectorAll(".leadRow").forEach(r=>r.addEventListener("click",()=>{
     openLeadId = (openLeadId===r.dataset.lead)?null:r.dataset.lead;
     renderLeads();
+  }));
+  document.querySelectorAll("[data-tcyc]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const l=leadsCache.find(x=>x.id===b.dataset.tcyc); if(!l) return;
+    const nt=nextTemp(l.temperature);
+    const {error}=await db.from("jobs").update({temperature:nt}).eq("id",l.id);
+    if(error){ toast("Update failed: "+error.message); return; }
+    l.temperature=nt; renderLeads();
+  }));
+  document.querySelectorAll("[data-settemp]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const l=leadsCache.find(x=>x.id===b.dataset.sid); if(!l) return;
+    const {error}=await db.from("jobs").update({temperature:b.dataset.settemp}).eq("id",l.id);
+    if(error){ toast("Update failed: "+error.message); return; }
+    l.temperature=b.dataset.settemp; renderLeads();
+  }));
+  document.querySelectorAll("[data-tagtog]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const l=leadsCache.find(x=>x.id===b.dataset.sid); if(!l) return;
+    const cur=l.tags||[]; const t=b.dataset.tagtog;
+    const next=cur.includes(t)?cur.filter(x=>x!==t):[...cur,t];
+    const {error}=await db.from("jobs").update({tags:next}).eq("id",l.id);
+    if(error){ toast("Update failed: "+error.message+" — run the Build 7.6 SQL if it mentions tags"); return; }
+    l.tags=next; renderLeads();
   }));
   document.querySelectorAll("[data-ics]").forEach(b=>b.addEventListener("click",e=>{
     e.stopPropagation(); downloadIcs(leadsCache.find(x=>x.id===b.dataset.ics));
