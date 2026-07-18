@@ -185,7 +185,7 @@
   /* Build 7.5 (v8.6) "Tape Measure": internal job size field (number + unit) on quotes */
   /* Build 7.5b (v8.6.1) "Quiet Quantities": SQ/SF/LF/HR/BDL qtys hidden on customer scope table (EA stays) */
   /* Build 7.6 (v8.7) "Mood Ring": color temperature (tap to cycle) + 10 tags + lead filters */
-  /* Build 7.6b (v8.7.1) "Mood Ring+": filter banner + honest empty state + chip wrap + temp/tags on quote cards & builder */
+  /* Build 7.7 (v8.8) "The Brochure Rack": per-trade manufacturer color links on customer Scope page (reference-only) */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -421,7 +421,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v8.7.1 — Mood Ring+</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v8.8 — The Brochure Rack</div>
   <div id="connDot">connecting…</div>
 </header>
 <nav>
@@ -1526,6 +1526,35 @@ function showPreview(m, capture){
       <div class="pvTotal"><span>${o.name||o.label||"Total"}</span><span>${fmt(o.total)}</span></div>
       ${specBlock(o)}`;
   const anySpec = m.options.some(o=>o.trade && o.tier && (PKG_SPECS[o.trade]||{})[o.tier]);
+  /* Build 7.7 "The Brochure Rack" (build77-v1): per-trade manufacturer color links.
+     Reference-only — clearly outside the signed contract documents.
+     NOTE: no Trex railing link by design (steer customers to our railing options). */
+  const TRADE_REFS = {
+    "Roofing": [
+      {l:"Owens Corning Duration\u00AE Shingle Colors", u:"https://www.owenscorning.com/en-us/roofing/shingles/trudefinition-duration"},
+      {l:"Owens Corning Duration\u00AE Designer Colors", u:"https://www.owenscorning.com/en-us/roofing/shingles/trudefinition-duration-designer"},
+      {l:"Metal Roofing \u2014 Union Corrugating Color Charts", u:"https://www.unioncorrugating.com/literature-color-charts/"}
+    ],
+    "Decking": [
+      {l:"Trex\u00AE Decking Colors", u:"https://www.trex.com/deck-ideas/colors/"}
+    ],
+    "Siding": [
+      {l:"Royal\u00AE Siding Colors & Combinations", u:"https://www.royalbuildingproducts.com/color-style/royal-color-combinations"},
+      {l:"James Hardie\u00AE Statement Collection\u2122 Colors", u:"https://www.jameshardie.com/statement-collection-colors/"}
+    ]
+  };
+  const activeTrades = tradeGroups
+    ? tradeGroups.map(g=>g.trade)
+    : [...new Set((m.options||[]).map(o=>o.trade).filter(Boolean))];
+  const refTrades = activeTrades.filter(t=>TRADE_REFS[t]);
+  const refsCard = refTrades.length ? `
+    <div style="border:2px solid var(--orange);border-radius:8px;padding:14px 16px;margin:18px 0 4px;background:#fffaf4">
+      <div style="font-weight:900;font-size:15px;color:var(--orange-deep);margin-bottom:2px">Colors &amp; Product Options</div>
+      <div style="font-size:11.5px;color:#7a7265;margin-bottom:10px">Browse the manufacturers\u2019 official color charts for your project, then record your choices on the Authorization page. These links are provided for your convenience and reference only and are not part of your contract documents.</div>
+      ${refTrades.map(t=>`
+        <div style="font-weight:800;font-size:12.5px;margin:8px 0 4px">${tn(t)}</div>
+        ${TRADE_REFS[t].map(r=>`<a href="${r.u}" target="_blank" rel="noopener" style="display:block;font-size:12.5px;padding:7px 10px;margin:4px 0;border:1px solid #e0d8cc;border-radius:6px;color:var(--orange-deep);font-weight:700;text-decoration:none;background:#fff">${r.l} \u2192</a>`).join("")}`).join("")}
+    </div>`:"";
   const scope=`<div class="pgBrk">
     <div class="pvTitle">Scope of Work</div>
     ${tradeGroups
@@ -1535,6 +1564,7 @@ function showPreview(m, capture){
       : m.options.map(optScope).join("")}
     ${anySpec?`<div style="border:2px solid var(--orange);padding:10px 14px;margin:14px 0 4px;font-weight:800;font-size:12.5px;color:var(--orange-deep)">${COMPARE_US_LINE}</div>`:""}
     <div class="pvFine" style="border-top:none;padding-top:6px">Every Kreck project includes full site protection, complete cleanup with magnetic sweep of the work area, and haul-away of all job-related debris.</div>
+    ${refsCard}
   </div>`;
 
   /* PHOTOS PAGE */
