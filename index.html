@@ -31,6 +31,21 @@
   #connDot::before{content:"";width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
   #connDot.on::before{background:var(--ok)}
   #connDot.err::before{background:#c62828}
+  #gearBtn{background:none;border:1px solid #3a352e;color:#b7b0a4;border-radius:8px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;align-self:center;margin-left:6px}
+  #gearBtn.active{color:#fff;border-color:var(--orange)}
+  .gated{display:none}
+  .dupStrip{background:#fdecea;border:2px solid #c62828;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px;color:#7a1414;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .dupStrip b{color:#1d1b17}
+  .dupStrip button{background:var(--ok);color:#fff;border:none;border-radius:8px;padding:11px 14px;font-weight:800;font-size:14px;min-height:44px;cursor:pointer}
+  .useBar{background:#eef6ee;border:1.5px solid #bcd9bc;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .useBar button{background:none;border:none;color:var(--orange);font-weight:700;font-size:13px;min-height:44px;cursor:pointer}
+  .reqNote{font-size:13px;color:#b06f1a;font-weight:600;margin-top:8px}
+  .leadRow .rowActs{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+  .leadRow .sq{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:0 12px;min-height:48px;font-weight:800;font-size:13.5px;cursor:pointer;white-space:nowrap}
+  .leadRow .qs{background:#eef6ee;color:#1e7a3c;border:1.5px solid #bcd9bc;border-radius:8px;padding:0 10px;min-height:48px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
+  .leadRow .temp{min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center}
+  .emgPill{display:inline-block;background:#c62828;color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em;border-radius:6px;padding:2px 7px;vertical-align:middle;margin-right:6px}
+  @media (max-width:480px){.leadRow{flex-wrap:wrap}.leadRow .rowActs{width:100%;justify-content:flex-end;margin-top:6px}}
   nav{display:flex;background:var(--ink);border-top:1px solid #2c2823}
   nav button{
     flex:1;padding:13px 4px;background:none;border:none;color:#b7b0a4;
@@ -187,6 +202,10 @@
   /* Build 7.6 (v8.7) "Mood Ring": color temperature (tap to cycle) + 10 tags + lead filters */
   /* Build 7.7 (v8.8) "The Brochure Rack": per-trade manufacturer color links on customer Scope page (reference-only) */
   /* Build 7.8 (v8.8.1) "Clean Sweep": 23 retired Old*/old* index files removed from the repo; no app changes */
+  /* Build 8 (v9.0) "One Door": people are created only on the Leads form (hard duplicate block on phone or name+street);
+     New Quote opens on "who is this for" and stays gated until a person is picked; Start Quote on every lead row;
+     Quoted filter shows quote number + status on the lead; Duplicate on every quote; 4 tabs + gear (Rate Card, Sign out);
+     all emoji removed except temperature dots, the emergency siren and plain symbols; tags shown as words (emoji stays as the stored key) */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -422,15 +441,15 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v8.8.1 — Clean Sweep</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.0 — One Door</div>
   <div id="connDot">connecting…</div>
+  <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 <nav>
   <button class="active" data-s="leads">Leads</button>
   <button data-s="sched">Schedule</button>
   <button data-s="new">New Quote</button>
   <button data-s="list">Quotes</button>
-  <button data-s="rates">Rate Card</button>
 </nav>
 
 <main>
@@ -473,6 +492,9 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
         <button class="tempBtn" data-t="🔴">🔴</button>
       </div>
       <label>Note</label><input id="lNote" placeholder="Gate code, dog's name, what they described…">
+      <div id="lUseBar"></div>
+      <div id="lDupStrip"></div>
+      <div class="reqNote" id="lReqNote"></div>
       <button class="btn" id="saveLead" style="margin-top:14px">Save lead</button>
       <p class="note" id="leadMsg"></p>
     </div>
@@ -495,18 +517,12 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
   <section id="s-new" class="screen">
     <div id="leadBannerZone"></div>
-    <h2>Trade</h2>
-    <div class="tradeRow" id="tradeRow"></div>
-
-    <div id="tradeWarn"></div>
-
     <h2>Customer</h2>
     <div class="card">
       <div id="custPickWrap">
-        <label>Find customer</label>
+        <label>Who is this quote for? Search name, phone or street</label>
         <input id="custSearch" placeholder="Search name, phone, or street…" autocomplete="off">
         <div id="custResults"></div>
-        <button class="btn ghost" id="custNewBtn" type="button" style="margin-top:10px">➕ New customer</button>
       </div>
       <div id="custPickedBar" class="pickedBar" style="display:none"></div>
       <div id="custFields" style="display:none">
@@ -537,10 +553,16 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
       </div>
     </div>
 
+    <div id="qBody" class="gated">
+    <h2>Trade</h2>
+    <div class="tradeRow" id="tradeRow"></div>
+
+    <div id="tradeWarn"></div>
+
     <h2>Photos</h2>
     <div class="card">
       <div id="bPhotoStrip"></div>
-      <button class="btn ghost" id="bPhotoBtn" type="button">📷 Add photos</button>
+      <button class="btn ghost" id="bPhotoBtn" type="button">Add photos</button>
       <input type="file" id="bPhotoInput" accept="image/*" multiple style="display:none">
       <p class="note">Photos upload right away and ride into the customer's proposal — first photo is the cover. Tap ✕ on a thumbnail to remove one.</p>
     </div>
@@ -568,7 +590,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <h2>Quote lines</h2>
     <div class="chipRow" id="optChips"></div>
     <div id="lines"><p class="note">Nothing yet — tap a package or add-on above.</p></div>
-    <button class="btn ghost" id="pvNewBtn" style="margin-bottom:6px">👁 Preview quote (customer view)</button>
+    <button class="btn ghost" id="pvNewBtn" style="margin-bottom:6px">Preview quote (customer view)</button>
     <button class="btn ghost" id="addCustom" style="margin-bottom:6px">+ Custom line (one-off charge)</button>
     <button class="btn ghost" id="addPermit" style="margin-bottom:14px">+ Permit fee (pass-through)</button>
 
@@ -582,6 +604,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     </div>
 
     <p class="note" id="saveMsg"></p>
+    </div>
   </section>
 
   <section id="s-list" class="screen">
@@ -605,7 +628,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <div class="cell price"><div class="v" id="tPrice">$0</div><div class="k">Quote price</div></div>
     <div class="cell"><div class="v" id="tCost">$0</div><div class="k">Your cost</div></div>
     <div class="cell"><div class="v" id="tMargin">—</div><div class="k">Margin</div></div>
-    <button id="tapePv" type="button" onclick="try{buildAndShowPreview()}catch(e){alert('Preview error: '+e.message)}">👁 Preview</button>
+    <button id="tapePv" type="button" onclick="try{buildAndShowPreview()}catch(e){alert('Preview error: '+e.message)}">Preview</button>
     <button id="tapeSave">Save</button>
   </div>
   <div id="tapeSplit">Labor <b>$0</b> · Materials <b>$0</b> · Other <b>$0</b></div>
@@ -614,11 +637,11 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 <div id="pvOverlay">
   <div class="pvBar">
     <button class="pvClose" id="pvClose">✕ Close</button>
-    <button class="pvClose" id="pvPhotoBtn">📷 Photos</button>
+    <button class="pvClose" id="pvPhotoBtn">Photos</button>
     <input type="file" id="pvPhotoInput" accept="image/*" multiple style="display:none">
     <input type="file" id="qPhotoInput" accept="image/*" multiple style="display:none">
     <span style="font-size:12px;color:#b7b0a4">Customer view</span>
-    <button class="pvPrint" id="pvPrint">🖨 Print / Save PDF</button>
+    <button class="pvPrint" id="pvPrint">Print / Save PDF</button>
   </div>
   <div class="pvPage" id="pvPage"></div>
 </div>
@@ -891,6 +914,7 @@ document.querySelectorAll("nav button").forEach(b=>{
   b.addEventListener("click",()=>{
     document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
     document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+    $("gearBtn").classList.remove("active");
     b.classList.add("active");
     $("s-"+b.dataset.s).classList.add("active");
     if(b.dataset.s==="list") loadQuotes();
@@ -898,11 +922,20 @@ document.querySelectorAll("nav button").forEach(b=>{
     if(b.dataset.s==="sched") loadSchedule(); /* Build 7 */
   });
 });
+/* Build 8: Rate Card + Sign out live behind the gear, not a tab */
+$("gearBtn").addEventListener("click",()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+  $("gearBtn").classList.add("active");
+  $("s-rates").classList.add("active");
+  window.scrollTo(0,0);
+});
+function showTab(name){ const b=document.querySelector('nav button[data-s="'+name+'"]'); if(b) b.click(); }
 
 /* ============ LEAD SYSTEM ============ */
 let leadTemp = "🟡";
 /* Build 7.6: color temperature + tags */
-const TAGS=[{e:"🔥",n:"Hot rush"},{e:"💰",n:"Big job"},{e:"📞",n:"Callback needed"},{e:"🤝",n:"Referral"},{e:"🔁",n:"Repeat customer"},{e:"📋",n:"Insurance job"},{e:"⏳",n:"Waiting on customer"},{e:"🏘️",n:"Hemlock Farms / expansion"},{e:"⚠️",n:"Proceed carefully"},{e:"🌶️",n:"Spice pricing"}];
+const TAGS=[{e:"🔥",n:"Hot rush"},{e:"💰",n:"Big job"},{e:"📞",n:"Callback"},{e:"🤝",n:"Referral"},{e:"🔁",n:"Repeat"},{e:"📋",n:"Insurance"},{e:"⏳",n:"Waiting"},{e:"🏘️",n:"Hemlock Farms"},{e:"⚠️",n:"Careful"},{e:"🌶️",n:"Spice pricing"}]; /* Build 8: e = stored key (never shown), n = what the app displays */
 const tclr=t=>({"🙂":"🟢","😐":"🟡","😠":"🔴"}[t]||t||"🟡"); /* legacy faces map to colors */
 const nextTemp=t=>({"🟢":"🟡","🟡":"🔴","🔴":"🟢"}[tclr(t)]);
 let leadTempFilter=null, leadTagFilter=null;
@@ -919,20 +952,103 @@ document.querySelectorAll(".tempBtn").forEach(b=>b.addEventListener("click",e=>{
   b.classList.add("sel");
 }));
 
+/* ===== Build 8 "One Door": the Leads form is the ONLY place a person gets created =====
+   Same person = same phone (digits only, leading 1 dropped) OR same last name + same street.
+   A match disables Save; the only way through is "Use existing", which attaches the new
+   job to the person already on file. A lead also needs a phone or a street to be checkable. */
+const normPhone = v => { let d=String(v||"").replace(/\D/g,""); if(d.length===11&&d[0]==="1") d=d.slice(1); return d; };
+const normStreet = v => String(v||"").toLowerCase().replace(/[.,#]/g," ").replace(/\b(street|st|road|rd|avenue|ave|drive|dr|lane|ln|court|ct|place|pl|boulevard|blvd|trail|trl|circle|cir|way)\b/g,"").replace(/\s+/g," ").trim();
+let leadDup=null;            /* customer row that blocks the save */
+let leadUseExisting=null;    /* customer row Ti chose to attach to */
+let returnToQuote=false;     /* set when New Quote handed us here — go back with the new lead */
+let leadDupT=null;
+function leadFormReady(){
+  return !!(normPhone($("lPhone").value) || $("lAddr").value.trim());
+}
+function updateLeadSaveState(){
+  const btn=$("saveLead"), note=$("lReqNote");
+  if(leadUseExisting){ btn.disabled=false; note.textContent=""; return; }
+  if(leadDup){ btn.disabled=true; note.textContent=""; return; }
+  if(!leadFormReady()){ btn.disabled=true; note.textContent="Add a phone number or a street address — that is how the app knows this is a new person."; return; }
+  btn.disabled=false; note.textContent="";
+}
+function renderDupStrip(){
+  const el=$("lDupStrip");
+  if(!leadDup || leadUseExisting){ el.innerHTML=""; return; }
+  const c=leadDup;
+  const where=[c.street_address,c.city].filter(Boolean).join(", ");
+  el.innerHTML=`<div class="dupStrip"><span>This is <b>${esc(((c.first_name||"")+" "+(c.last_name||"")).trim())}</b>${where?" — "+esc(where):""}${c.phone?" · "+esc(c.phone):""}. Already on file.</span>
+    <button type="button" id="lUseExisting">Use existing</button></div>`;
+  $("lUseExisting").addEventListener("click",()=>useExistingForLead(c));
+}
+function renderUseBar(){
+  const el=$("lUseBar");
+  if(!leadUseExisting){ el.innerHTML=""; return; }
+  const c=leadUseExisting;
+  el.innerHTML=`<div class="useBar"><span>New job for <b>${esc(((c.first_name||"")+" "+(c.last_name||"")).trim())}</b> — already on file, no duplicate. Source stays as first recorded.</span>
+    <button type="button" id="lUseClear">✕ not them</button></div>`;
+  $("lUseClear").addEventListener("click",()=>{ leadUseExisting=null; renderUseBar(); checkLeadDup(true); });
+}
+function useExistingForLead(c){
+  leadUseExisting=c; leadDup=null;
+  $("lFirst").value=c.first_name||""; $("lLast").value=c.last_name||"";
+  $("lPhone").value=c.phone||""; if(c.email&&!$("lEmail").value.trim()) $("lEmail").value=c.email;
+  if(c.street_address&&!$("lAddr").value.trim()) $("lAddr").value=c.street_address;
+  if(c.city&&!$("lCity").value.trim()) $("lCity").value=c.city;
+  renderDupStrip(); renderUseBar(); updateLeadSaveState();
+  toast("Using "+(c.first_name||"")+" "+(c.last_name||"")+" — new job, same person");
+}
+async function findDuplicateCustomer(phone,last,street,excludeId){
+  const ph=normPhone(phone), ln=(last||"").trim().toLowerCase(), st=normStreet(street);
+  if(!ph && !(ln&&st)) return null;
+  const ors=[];
+  if(ph) ors.push("phone.ilike.%"+ph.slice(-4)+"%");
+  if(ln&&st) ors.push("last_name.ilike."+ln.replace(/[%,()]/g,""));
+  const {data,error}=await db.from("customers").select("id,first_name,last_name,phone,email,street_address,city,lead_source").or(ors.join(",")).limit(40);
+  if(error||!data) return null;
+  for(const c of data){
+    if(excludeId && c.id===excludeId) continue;
+    if(ph && normPhone(c.phone)===ph) return c;
+    if(ln&&st && (c.last_name||"").trim().toLowerCase()===ln && normStreet(c.street_address)===st) return c;
+  }
+  return null;
+}
+async function checkLeadDup(now){
+  clearTimeout(leadDupT);
+  const run=async()=>{
+    if(leadUseExisting){ updateLeadSaveState(); return; }
+    const c=await findDuplicateCustomer($("lPhone").value,$("lLast").value,$("lAddr").value,null);
+    leadDup=c; renderDupStrip(); updateLeadSaveState();
+  };
+  if(now) return run();
+  leadDupT=setTimeout(run,350);
+}
+["lPhone","lLast","lAddr"].forEach(id=>$(id).addEventListener("input",()=>checkLeadDup(false)));
+updateLeadSaveState();
+
 $("saveLead").addEventListener("click", async ()=>{
   const first=$("lFirst").value.trim(), last=$("lLast").value.trim();
   if(!first && !last){ toast("Enter at least a name"); return; }
-  if(!lSrcSel){ toast("Tap a lead source — it feeds the Sources report later"); return; }
+  if(!leadUseExisting && !leadFormReady()){ toast("Add a phone number or a street address first"); updateLeadSaveState(); return; }
+  if(!leadUseExisting && !lSrcSel){ toast("Tap a lead source — it feeds the Sources report later"); return; }
   const btn=$("saveLead"); btn.disabled=true; btn.textContent="Saving…";
   try{
-    /* Build 6 D5: Leads tab and New Quote share ONE customer-create path */
-    const cust = await createCustomerRow({
-      first:first, last:last,
-      phone:$("lPhone").value.trim(), email:$("lEmail").value.trim(),
-      street:$("lAddr").value.trim(), city:$("lCity").value.trim(),
-      state:"NY", zip:null,
-      lead_source:composeSource(lSrcSel,"lSourceDetail")
-    });
+    let cust;
+    if(leadUseExisting){
+      cust=leadUseExisting;
+    } else {
+      /* Build 8: final server-side check right before insert — catches a lead Tiana saved ten seconds ago */
+      const dup=await findDuplicateCustomer($("lPhone").value,last,$("lAddr").value,null);
+      if(dup){ leadDup=dup; renderDupStrip(); updateLeadSaveState(); btn.textContent="Save lead"; toast("Already on file — tap Use existing"); return; }
+      /* Build 6 D5: the one customer-create path in the app */
+      cust = await createCustomerRow({
+        first:first, last:last,
+        phone:$("lPhone").value.trim(), email:$("lEmail").value.trim(),
+        street:$("lAddr").value.trim(), city:$("lCity").value.trim(),
+        state:"NY", zip:null,
+        lead_source:composeSource(lSrcSel,"lSourceDetail")
+      });
+    }
     const appt=$("lAppt").value ? new Date($("lAppt").value).toISOString() : null;
     /* Build 7: resolve the zone; Milford + unknown towns must be answered first */
     const cityVal=$("lCity").value.trim();
@@ -952,38 +1068,55 @@ $("saveLead").addEventListener("click", async ()=>{
         return;
       }
     }
-    const {error:e2} = await db.from("jobs").insert({
+    const {data:newJob,error:e2} = await db.from("jobs").insert({
       customer_id:cust.id,job_type:$("lType").value,status:"Lead",
       street_address:$("lAddr").value.trim()||null,city:cityVal||null,state:"NY",
       appointment:appt,temperature:leadTemp,emergency:$("lEmg").checked,
       zone:leadZone, /* Build 7 */
       notes:$("lNote").value.trim()||null
-    });
+    }).select().single();
     if(e2) throw e2;
     toast("Lead saved"+($("lEmg").checked?" — 🚨 flagged":""));
-    $("leadMsg").textContent="Lead saved. It's in the list below — tap it for Add to Calendar and Start Quote.";
+    $("leadMsg").textContent="Lead saved. It's in the list below — Start Quote is on the row.";
     ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
     lSrcSel=null; drawSrcChips();
     resetLeadZoneState(); loadSchedule(); /* Build 7 */
     $("lEmg").checked=false; leadTemp="🟡";
     document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="🟡"));
+    leadDup=null; leadUseExisting=null; renderDupStrip(); renderUseBar(); updateLeadSaveState();
     loadLeads();
+    if(returnToQuote && newJob){ /* Build 8: New Quote sent us here — go straight back with them picked */
+      returnToQuote=false;
+      startQuoteFromLead({...newJob, customers:cust});
+    }
   }catch(err){
     console.error(err);
     $("leadMsg").textContent="Save failed: "+(err.message||"unknown")+". If it mentions a missing column, run the wave-two SQL in Supabase first.";
   }
-  btn.disabled=false; btn.textContent="Save lead";
+  btn.textContent="Save lead"; updateLeadSaveState();
 });
 
 let leadFilter="Open";
 let leadLimit=15;
+let leadQuoteByJob={}; /* Build 8 */
+const tagName = e => { const t=TAGS.find(x=>x.e===e); return t?t.n:e; };
+const tagNames = arr => (arr||[]).map(tagName).join(" · ");
 async function loadLeads(){
   $("leadList").innerHTML='<p class="note">Loading…</p>';
-  const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : ["Lead","Lost"];
+  const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : leadFilter==="Quoted" ? ["Quoted"] : ["Lead","Quoted","Lost"];
   const {data,error} = await db.from("jobs")
     .select("id,job_type,status,appointment,temperature,tags,emergency,notes,created_at,street_address,city,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
     .in("status",statuses).order("created_at",{ascending:false}).limit(500);
   if(error){ $("leadList").innerHTML='<p class="note">Could not load leads: '+error.message+'. If it mentions a missing column, run the wave-two SQL first.</p>'; return; }
+  /* Build 8: latest quote per job so the lead row can show "Q-0142 · Sent" */
+  leadQuoteByJob={};
+  try{
+    const ids=(data||[]).filter(j=>j.status!=="Lead").map(j=>j.id);
+    if(ids.length){
+      const {data:qs}=await db.from("quotes").select("id,job_id,quote_number,status,created_at").in("job_id",ids).order("created_at",{ascending:false});
+      (qs||[]).forEach(q=>{ if(!leadQuoteByJob[q.job_id]) leadQuoteByJob[q.job_id]=q; });
+    }
+  }catch(_){}
   leadsCache=(data||[]).sort((a,b)=>{
     if(a.emergency!==b.emergency) return a.emergency?-1:1;
     if(a.appointment&&b.appointment) return new Date(a.appointment)-new Date(b.appointment);
@@ -995,11 +1128,11 @@ async function loadLeads(){
   renderLeads();
 }
 function renderLeadChips(){
-  $("leadChips").innerHTML=["Open","Lost","All"].map(o=>
+  $("leadChips").innerHTML=["Open","Quoted","Lost","All"].map(o=>
     `<button class="chip ${leadFilter===o?'sel':''}" data-lf="${o}">${o}</button>`).join("")
-    /* Build 7.6: temperature + tag filters */
+    /* Build 7.6: temperature + tag filters · Build 8: tags read as words */
     + ["🟢","🟡","🔴"].map(t=>`<button class="chip ${leadTempFilter===t?'sel':''}" data-tf="${t}">${t}</button>`).join("")
-    + TAGS.map(t=>`<button class="chip ${leadTagFilter===t.e?'sel':''}" data-gf="${t.e}" title="${t.n}">${t.e}</button>`).join("");
+    + TAGS.map(t=>`<button class="chip ${leadTagFilter===t.e?'sel':''}" data-gf="${t.e}">${t.n}</button>`).join("");
   document.querySelectorAll("[data-lf]").forEach(c=>c.addEventListener("click",()=>{
     leadFilter=c.dataset.lf; leadLimit=15; openLeadId=null; loadLeads();
   }));
@@ -1044,20 +1177,24 @@ function renderLeads(){
         ${l.street_address?`<div class="dMeta">${l.street_address}${l.city?", "+l.city:""}</div>`:""}
         <div class="dMeta">Source: ${cu.lead_source||"—"}${l.emergency?" · 🚨 EMERGENCY":""}</div>
         <div class="dMeta">Temp: ${["🟢","🟡","🔴"].map(t=>`<button class="chip ${tclr(l.temperature)===t?'sel':''}" data-settemp="${t}" data-sid="${l.id}">${t}</button>`).join("")}</div>
-        <div class="dMeta">Tags: ${TAGS.map(t=>`<button class="chip ${(l.tags||[]).includes(t.e)?'sel':''}" data-tagtog="${t.e}" data-sid="${l.id}" title="${t.n}">${t.e}</button>`).join("")}</div>
+        <div class="dMeta">Tags: ${TAGS.map(t=>`<button class="chip ${(l.tags||[]).includes(t.e)?'sel':''}" data-tagtog="${t.e}" data-sid="${l.id}">${t.n}</button>`).join("")}</div>
         ${l.notes?`<div class="dMeta">"${l.notes}"</div>`:""}
         <div class="actRow">
-          ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">📅 Add to Calendar</button>`:""}
-          ${l.status==="Lead"?`<button class="actBtn" data-quote="${l.id}">Start Quote →</button>
-          <button class="actBtn gray" data-lost="${l.id}">Mark Lost</button>`
-          :`<button class="actBtn" data-reopen="${l.id}">Reopen lead</button>`}
+          ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">Add to Calendar</button>`:""}
+          ${l.status==="Lead"?`<button class="actBtn gray" data-lost="${l.id}">Mark Lost</button>`
+          :l.status==="Lost"?`<button class="actBtn" data-reopen="${l.id}">Reopen lead</button>`:""}
         </div>
       </div>`;
     }
+    /* Build 8: Start Quote on every open lead row; quoted leads show their quote */
+    const lq=leadQuoteByJob[l.id];
+    const rowAct = l.status==="Lead"
+      ? `<button class="sq" data-quote="${l.id}" type="button">Start Quote</button>`
+      : lq ? `<button class="qs" data-jumpq="${lq.id}" type="button">${esc(lq.quote_number)} · ${esc(lq.status)}</button>` : "";
     return `<div class="leadRow ${l.emergency?'emg':''}" data-lead="${l.id}">
-      <div><div class="who">${l.emergency?"🚨 ":""}${who}</div>
-      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+l.tags.join(""):""}</div></div>
-      <div class="temp" data-tcyc="${l.id}" title="Tap to change">${tclr(l.temperature)}</div>
+      <div style="min-width:0"><div class="who">${l.emergency?"🚨 ":""}${who}</div>
+      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+tagNames(l.tags):""}</div></div>
+      <div class="rowActs">${rowAct}<div class="temp" data-tcyc="${l.id}" title="Tap to change">${tclr(l.temperature)}</div></div>
     </div>${detail}`;
   }).join("");
   bindBanner();
@@ -1095,6 +1232,9 @@ function renderLeads(){
   document.querySelectorAll("[data-quote]").forEach(b=>b.addEventListener("click",e=>{
     e.stopPropagation(); startQuoteFromLead(leadsCache.find(x=>x.id===b.dataset.quote));
   }));
+  document.querySelectorAll("[data-jumpq]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); jumpToQuote(b.dataset.jumpq);
+  }));
   document.querySelectorAll("[data-lost]").forEach(b=>b.addEventListener("click",async e=>{
     e.stopPropagation();
     const {error}=await db.from("jobs").update({status:"Lost"}).eq("id",b.dataset.lost);
@@ -1122,7 +1262,7 @@ function downloadIcs(l){
   const who=(cu.first_name||"")+" "+(cu.last_name||"");
   const loc=[l.street_address,l.city,"NY"].filter(Boolean).join(", ");
   const desc=[cu.phone?"Phone: "+cu.phone:"",cu.lead_source?"Source: "+cu.lead_source:"",
-    "Temp: "+(l.temperature||"😐"),l.emergency?"🚨 EMERGENCY":"",l.notes||""].filter(Boolean).join("\\n");
+    "Temp: "+tclr(l.temperature),l.emergency?"🚨 EMERGENCY":"",l.notes||""].filter(Boolean).join("\\n");
   const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KRECK OS//EN","BEGIN:VEVENT",
     "UID:"+l.id+"@kreckos","DTSTAMP:"+icsDate(new Date()),
     "DTSTART:"+icsDate(start),"DTEND:"+icsDate(end),
@@ -1137,8 +1277,8 @@ function downloadIcs(l){
   toast("Opening calendar event — tap Add");
 }
 function startQuoteFromLead(l){
-  builderMood = tclr(l.temperature)+((l.tags&&l.tags.length)?" "+l.tags.join(""):"");
   if(!l) return;
+  builderMood = tclr(l.temperature)+((l.tags&&l.tags.length)?" "+tagNames(l.tags):"");
   editingQuote=null; /* Build 5: starting from a lead always exits edit mode */
   const cu=l.customers||{};
   pendingLead={jobId:l.id, customerId:cu.id, name:(cu.first_name||"")+" "+(cu.last_name||"")};
@@ -1157,7 +1297,7 @@ function startQuoteFromLead(l){
 }
 function renderLeadBanner(){
   $("leadBannerZone").innerHTML = editingQuote
-    ? `<div class="leadBanner"><span>✏️ Editing <b>${editingQuote.number}</b> — Save updates this quote in place. Old share links will stop working.</span>
+    ? `<div class="leadBanner"><span>Editing <b>${editingQuote.number}</b> — Save updates this quote in place. Old share links will stop working.</span>
        <button id="cancelLead">✕ cancel edit</button></div>`
     : pendingLead
     ? `<div class="leadBanner"><span>Quoting lead: <b>${pendingLead.name}</b> — save will update their record, no duplicate.</span>
@@ -1175,8 +1315,8 @@ function renderLeadBanner(){
       return;
     }
     pendingLead=null; renderLeadBanner();
-    setCustMode("new"); /* Build 6: fresh customer needs the source chips back */
-    toast("Detached — save will create a fresh customer (tap their lead source)");
+    clearCustFields(); setCustMode("search"); /* Build 8: back to "who is this for" — people are created on Leads */
+    toast("Detached — pick who this quote is for");
   });
 }
 
@@ -1868,7 +2008,7 @@ function renderBuilder(){
       toast(p.label+" — "+size+" "+p.unit+" loaded");
     });
   });
-  /* ⚡ ONE-TAP: build one option per package (Good/Better/Best in one move) */
+  /* ONE-TAP: build one option per package (Good/Better/Best in one move) */
   /* Build 4 Decision #1: railing LF input shows only where the trade defines it (Decking) */
   const lfw = $("lfWrap");
   if(lfw){
@@ -1880,7 +2020,7 @@ function renderBuilder(){
     /* Build 4 Part 1: one-tap build for EVERY packaged trade — Roofing "Build all 3",
        Decking/Siding "Build both". Same mechanics: replaces only this trade's options. */
     baz.innerHTML = (T.packages && T.packages.length>=2 && T.packages.length<=4)
-      ? `<button class="btn ghost" id="buildAllBtn" style="width:100%;margin-top:10px;border-color:var(--orange);color:var(--orange-deep);font-weight:800">⚡ Build ${T.packages.length===2?"both":"all "+T.packages.length+" options"} — ${T.packages.map(p=>p.label).join(" · ")}</button>`
+      ? `<button class="btn ghost" id="buildAllBtn" style="width:100%;margin-top:10px;border-color:var(--orange);color:var(--orange-deep);font-weight:800">Build ${T.packages.length===2?"both":"all "+T.packages.length+" options"} — ${T.packages.map(p=>p.label).join(" · ")}</button>`
       : "";
     const bab = $("buildAllBtn");
     if(bab) bab.addEventListener("click",()=>{
@@ -1900,7 +2040,7 @@ function renderBuilder(){
       currentTier = options[0].tier;
       document.querySelectorAll(".tierBtn").forEach(x=>x.classList.toggle("sel", x.dataset.key===currentTier));
       renderLines();
-      toast("⚡ Built "+options.length+" options — hit Preview to see them side by side");
+      toast("Built "+options.length+" options — hit Preview to see them side by side");
     });
   }
   renderAddons();
@@ -2117,15 +2257,15 @@ function renderRates(){
    loadQuotes select shape, then runs the one shared pipeline. */
 const QUOTE_SELECT = "id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,temperature,tags,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)";
 const shareNowButton = quoteId =>
-  ` <button class="copyBtn" data-sharenow="${quoteId}" style="background:var(--ok);margin-top:8px">🔗 Share to sign now</button>`;
+  ` <button class="copyBtn" data-sharenow="${quoteId}" style="background:var(--ok);margin-top:8px">Share to sign now</button>`;
 document.addEventListener("click", async e=>{
   const b = e.target.closest("[data-sharenow]");
   if(!b || b.disabled) return;
   b.disabled=true; b.textContent="Building link…";
   const {data:q,error} = await db.from("quotes").select(QUOTE_SELECT).eq("id",b.dataset.sharenow).single();
-  if(error||!q){ toast("Could not load the quote to share: "+((error&&error.message)||"not found")); b.disabled=false; b.textContent="🔗 Share to sign now"; return; }
+  if(error||!q){ toast("Could not load the quote to share: "+((error&&error.message)||"not found")); b.disabled=false; b.textContent="Share to sign now"; return; }
   const ok = await shareQuote(q,b);
-  b.textContent = ok ? "✓ Link sent" : "🔗 Share to sign now";
+  b.textContent = ok ? "✓ Link sent" : "Share to sign now";
   b.disabled = ok;
 });
 async function saveQuote(){
@@ -2319,6 +2459,11 @@ $("tapeSave").addEventListener("click",()=>{
 let quotesCache = [];
 let openQuoteId = null;
 let statusFilter = "All";
+/* Build 8: open a specific quote from a lead row */
+function jumpToQuote(id){
+  statusFilter="All"; openQuoteId=id;
+  showTab("list");
+}
 
 function quoteOptions(q){
   const items=(q.quote_line_items||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
@@ -2449,7 +2594,9 @@ async function loadQuotes(){
   quotesCache = data;
   renderPipeStats();
   renderChips();
-  renderQuoteList();
+  if(openQuoteId && !quotesCache.find(q=>q.id===openQuoteId)){ toast("That quote is older than the last 50 shown"); openQuoteId=null; }
+  renderQuoteList(openQuoteId||undefined);
+  if(openQuoteId){ const r=document.querySelector('.qRow[data-open="'+openQuoteId+'"]'); if(r) r.scrollIntoView({block:"start"}); }
 }
 function parseNotes(notes){
   const out={};
@@ -2554,15 +2701,15 @@ async function shareQuote(q, btnEl){
       if(q.status==="Draft"){
         const {error:e2}=await db.from("quotes").update({status:"Sent"}).eq("id",q.id);
         if(!e2){ q.status="Sent"; renderPipeStats(); renderChips(); renderQuoteList(q.id);
-          if(btnEl){ btnEl.disabled=false; btnEl.textContent="🔗 Share to sign"; } return true; }
+          if(btnEl){ btnEl.disabled=false; btnEl.textContent="Share to sign"; } return true; }
       }
     }catch(err){
       console.error(err);
       toast("Share failed: "+(err.message||"unknown error"));
-      if(btnEl){ btnEl.disabled=false; btnEl.textContent="🔗 Share to sign"; }
+      if(btnEl){ btnEl.disabled=false; btnEl.textContent="Share to sign"; }
       return false;
     }
-    if(btnEl){ btnEl.disabled=false; btnEl.textContent="🔗 Share to sign"; }
+    if(btnEl){ btnEl.disabled=false; btnEl.textContent="Share to sign"; }
     return true;
 }
 function renderQuoteList(openId){
@@ -2592,13 +2739,13 @@ function renderQuoteList(openId){
       const costInfo = n.cost ? `Your cost ${fmt0(n.cost)}${n.margin?` · margin ${n.margin}%`:""}${n.L?` · L ${fmt0(n.L)} / M ${fmt0(n.M)} / O ${fmt0(n.O)}`:""}${opts.length>1?" (Option A basis)":""}` : "";
       const phasing = n.phasing ? `<div class="dMeta">Payment schedule: ${n.phasing}</div>` : "";
       const noWarranty = (q.notes||"").includes("NO-WARRANTY") ? `<div class="dMeta" style="color:var(--orange-deep);font-weight:700">⚠️ No-warranty repair terms apply</div>` : "";
-      const signedLine = n.signedby ? `<div class="dMeta" style="color:var(--ok);font-weight:700">✍️ Signed — ${esc(n.signedby)}</div>` : "";
+      const signedLine = n.signedby ? `<div class="dMeta" style="color:var(--ok);font-weight:700">Signed — ${esc(n.signedby)}</div>` : "";
       /* Build 5b: customer inputs captured at signing (sign_proposal v4 stamps notes) */
-      const custSel = n.custsel ? `<div class="dMeta">🎨 Customer selections — ${esc(n.custsel)}</div>` : "";
-      const custCom = n.custcomment ? `<div class="dMeta" style="font-style:italic">💬 “${esc(n.custcomment)}”</div>` : "";
+      const custSel = n.custsel ? `<div class="dMeta">Customer selections — ${esc(n.custsel)}</div>` : "";
+      const custCom = n.custcomment ? `<div class="dMeta" style="font-style:italic">Customer note: “${esc(n.custcomment)}”</div>` : "";
       /* Build 5: signed = sacred (duplicate/void only) · unsigned = edit/delete */
       const isSigned = !!n.signedby;
-      const voidedLine = q.status==="Voided" ? `<div class="dMeta" style="color:#6f6a61;font-weight:700">⛔ Voided — tap a status below to restore it</div>` : "";
+      const voidedLine = q.status==="Voided" ? `<div class="dMeta" style="color:#6f6a61;font-weight:700">Voided — tap a status below to restore it</div>` : "";
       const phStrip = (q.photos&&q.photos.length) ? `<div class="phStrip">${q.photos.map((u,i)=>
         `<div class="phThumb"><img src="${u}" loading="lazy">${i===0?`<span class="phCover">COVER</span>`:""}<button class="phDel" data-phdel="${q.id}" data-phi="${i}">✕</button></div>`).join("")}</div>` : "";
       detail=`<div class="qDetail">
@@ -2611,20 +2758,20 @@ function renderQuoteList(openId){
           ${["Draft","Sent","Approved","Declined"].map(s=>
             `<button class="stBtn ${q.status===s?'cur':''}" data-q="${q.id}" data-s="${s}">${s}</button>`).join("")}
           <button class="copyBtn" data-c="${q.id}">Copy summary</button>
-          <button class="copyBtn" data-ph="${q.id}">📷 Photos${(q.photos&&q.photos.length)?" · "+q.photos.length:""}</button>
-          <button class="copyBtn" data-pv="${q.id}" style="background:var(--orange)">👁 Preview</button>
-          ${q.status!=="Voided"?`<button class="copyBtn" data-sh="${q.id}" style="background:var(--ok)">🔗 Share to sign</button>`:""}
+          <button class="copyBtn" data-ph="${q.id}">Photos${(q.photos&&q.photos.length)?" · "+q.photos.length:""}</button>
+          <button class="copyBtn" data-pv="${q.id}" style="background:var(--orange)">Preview</button>
+          ${q.status!=="Voided"?`<button class="copyBtn" data-sh="${q.id}" style="background:var(--ok)">Share to sign</button>`:""}
+          <button class="copyBtn" data-dup="${q.id}" style="background:var(--orange)">Duplicate as new</button>
           ${isSigned
-            ? `<button class="copyBtn" data-dup="${q.id}" style="background:var(--orange)">📋 Duplicate as new</button>`
-              +(q.status!=="Voided"?`<button class="copyBtn" data-void="${q.id}" style="background:#6f6a61">⛔ Void</button>`:"")
-            : `<button class="copyBtn" data-ed="${q.id}" style="background:var(--orange)">✏️ Edit</button>
-               <button class="copyBtn" data-del="${q.id}" style="background:#8c1f1f">🗑 Delete</button>`}
+            ? (q.status!=="Voided"?`<button class="copyBtn" data-void="${q.id}" style="background:#6f6a61">Void</button>`:"")
+            : `<button class="copyBtn" data-ed="${q.id}" style="background:var(--orange)">Edit</button>
+               <button class="copyBtn" data-del="${q.id}" style="background:#8c1f1f">Delete</button>`}
         </div>
       </div>`;
     }
     return `<div class="qRow" data-open="${q.id}">
       <div><div class="who">${tclr(q.jobs?.temperature)} ${who}</div>
-      <div class="meta">${q.quote_number} · ${d}${trade?" · "+trade:""}${q.jobs?.city?" · "+q.jobs.city:""}${(q.jobs?.tags&&q.jobs.tags.length)?" · "+q.jobs.tags.join(""):""}</div></div>
+      <div class="meta">${q.quote_number} · ${d}${trade?" · "+trade:""}${q.jobs?.city?" · "+q.jobs.city:""}${(q.jobs?.tags&&q.jobs.tags.length)?" · "+tagNames(q.jobs.tags):""}</div></div>
       <div style="text-align:right"><div class="amt">${priceStr}</div>
       ${tierBadge}<span class="badge ${q.status}">${q.status}</span></div>
     </div>${detail}`;
@@ -2746,7 +2893,7 @@ function renderQuoteList(openId){
     }catch(err){
       console.error(err);
       toast("Delete failed: "+(err.message||"unknown error"));
-      b.disabled=false; b.textContent="🗑 Delete";
+      b.disabled=false; b.textContent="Delete";
     }
   }));
 }
@@ -2917,16 +3064,18 @@ function setCustMode(mode, srcText){
   const pick=$("custPickWrap"), bar=$("custPickedBar"), fields=$("custFields"),
         srcW=$("srcWrap"), srcL=$("srcLocked");
   if(!pick||!bar||!fields) return;
+  /* Build 8: nothing below the customer card until a person is picked */
+  $("qBody").classList.toggle("gated", mode==="search");
   if(mode==="search"){
     pickedCustomer=null;
     pick.style.display=""; bar.style.display="none"; fields.style.display="none";
     $("custResults").innerHTML=""; $("custSearch").value="";
-  } else if(mode==="new"){
+  } else if(mode==="new"){ /* Build 8: no longer reachable — people are created on the Leads form */
     pickedCustomer=null;
     pick.style.display="none"; fields.style.display="";
     srcW.style.display=""; srcL.style.display="none";
     bar.style.display="";
-    bar.innerHTML=`<span>➕ <b>New customer</b> — fill in the details below</span><button type="button" id="custBackBtn">🔍 find existing</button>`;
+    bar.innerHTML=`<span><b>New customer</b></span><button type="button" id="custBackBtn">find existing</button>`;
     $("custBackBtn").addEventListener("click",()=>{ clearCustFields(); setCustMode("search"); });
   } else if(mode==="picked"){
     pick.style.display="none"; fields.style.display="";
@@ -2977,9 +3126,21 @@ async function runCustSearch(t){
   $("custResults").innerHTML = hits.length
     ? hits.map(c=>`<div class="custHit" data-cid="${c.id}"><b>${esc(((c.first_name||"")+" "+(c.last_name||"")).trim()||"—")}</b>
         <div class="meta">${esc(c.phone||"no phone")} · ${esc(c.street_address||"no street")}${c.city?", "+esc(c.city):""}</div></div>`).join("")
-    : `<p class="note">No match — tap ➕ New customer below.</p>`;
+    : `<p class="note">Nobody on file matches.</p><button class="btn ghost" type="button" id="custHandoff">Add “${esc(t)}” as a new lead</button>`;
   const byId={}; hits.forEach(c=>byId[c.id]=c);
   document.querySelectorAll(".custHit[data-cid]").forEach(h=>h.addEventListener("click",()=>pickCustomer(byId[h.dataset.cid])));
+  const ho=$("custHandoff"); if(ho) ho.addEventListener("click",()=>handoffToLeads(t));
+}
+/* Build 8: the one door — New Quote sends new people to the Leads form and gets them back */
+function handoffToLeads(text){
+  const t=(text||"").trim();
+  const digits=t.replace(/\D/g,"");
+  showTab("leads");
+  if(digits.length>=7 && digits.length===t.replace(/[\s().+-]/g,"").length){ $("lPhone").value=t; }
+  else { const w=t.split(/\s+/); $("lFirst").value=w[0]||""; $("lLast").value=w.slice(1).join(" "); }
+  returnToQuote=true; leadUseExisting=null; leadDup=null; renderUseBar(); checkLeadDup(true);
+  window.scrollTo(0,0);
+  toast("Finish the lead and tap Save — you come straight back to the quote");
 }
 async function pickCustomer(c){
   if(!c) return;
@@ -2996,7 +3157,6 @@ async function pickCustomer(c){
   $("cAddr").value=street; $("cCity").value=city; $("cState").value=st; $("cZip").value=zip;
   setCustMode("picked", c.lead_source);
 }
-$("custNewBtn").addEventListener("click",()=>{ clearCustFields(); setCustMode("new"); });
 
 /* ---------- Part 1: builder photo strip ---------- */
 function renderBPhotos(){
@@ -3151,7 +3311,7 @@ function showPiggy(containerId, zone, excludeId, applyFn){
   const hits=upcomingInZone(zone, excludeId);
   if(!hits.length){ el.innerHTML=""; return; } /* silent when it saves no drive */
   const h=hits[0];
-  el.innerHTML='<div class="piggyBanner">📍 Already in Zone '+jobZone(h)+' ('+(ZONES[jobZone(h)]||{}).name+') '
+  el.innerHTML='<div class="piggyBanner">Already in Zone '+jobZone(h)+' ('+(ZONES[jobZone(h)]||{}).name+') '
     +piggyLabel(h)+'.<br><button class="btn ghost" id="'+containerId+'Go" style="margin-top:8px">Piggyback this one?</button></div>';
   $(containerId+"Go").addEventListener("click",e=>{
     e.preventDefault();
@@ -3234,9 +3394,9 @@ function schedPanelHtml(l, needs){
     +'<label>'+(needs?"Set the appointment":"Reschedule")+'</label>'
     +'<input type="datetime-local" id="spWhen" value="'+val+'">'
     +'<div class="chipRow" style="margin-top:10px">'
-    +'<button class="chip" data-spsave="'+l.id+'">💾 Save date</button>'
-    +(l.appointment?'<button class="chip" data-spremind="'+l.id+'">💬 Send reminder</button>':"")
-    +(l.appointment?'<button class="chip" data-spics="'+l.id+'">📅 Add to Calendar</button>':"")
+    +'<button class="chip" data-spsave="'+l.id+'">Save date</button>'
+    +(l.appointment?'<button class="chip" data-spremind="'+l.id+'">Send reminder</button>':"")
+    +(l.appointment?'<button class="chip" data-spics="'+l.id+'">Add to Calendar</button>':"")
     +'</div></div>';
 }
 function renderNeedsSched(){
