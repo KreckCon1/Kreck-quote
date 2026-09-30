@@ -3459,7 +3459,7 @@ async function deleteBuilderPhoto(i){
 /* ============ BUILD 10 (v9.2) — CAMERA ROLL ============
    "From CompanyCam" in the quote Photos section. The CompanyCam project is tied ONCE to the job
    (jobs.companycam_project_id / _name) and remembered. Picked photos are COPIED server-side into the
-   quote-photos bucket by the `companycam` Edge Function — the quote stores OUR copy, never CompanyCam's link.
+   quote-photos bucket by the `dynamic-action` Edge Function (the CompanyCam helper) — the quote stores OUR copy, never CompanyCam's link.
    The CompanyCam token lives only in a Supabase secret; this page never sees it. */
 function ccReset(){
   builderCc=null; ccPicked=new Set(); ccPhotos=[];
@@ -3479,7 +3479,7 @@ function ccAgo(ts){
   return new Date(n*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 }
 async function ccCall(body){
-  const {data,error}=await db.functions.invoke("companycam",{body});
+  const {data,error}=await db.functions.invoke("dynamic-action",{body});
   if(error) throw new Error("could not reach the CompanyCam function ("+(error.message||"unknown")+")");
   if(!data||!data.ok) throw new Error((data&&data.error)||"CompanyCam request failed");
   return data;
