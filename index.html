@@ -33,6 +33,14 @@
   #draftBar .dbRow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
   #draftBar button{border:1.5px solid #1d4ed8;background:#fff;color:#1d4ed8;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;touch-action:manipulation}
   #draftBar button.go{background:#1d4ed8;color:#fff}
+  #outBar{background:#eaf6ee;border-bottom:1.5px solid #9fd0ad;padding:10px 16px;font-size:14px}
+  #outBar .dbRow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  #outBar .dbRow.left{justify-content:flex-start}
+  #outBar button{border:1.5px solid #1e7a3c;background:#fff;color:#1e7a3c;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;touch-action:manipulation}
+  #outBar button.go{background:#1e7a3c;color:#fff}
+  #outBar .obList{margin-top:6px;color:#2b4a35;font-size:13.5px;line-height:1.45}
+  #outBar .obNeed{margin-top:10px;background:#fff3d6;border:1.5px solid #e6c56c;border-radius:10px;padding:10px 12px;color:#5d4200}
+  #outBar .obNeed button{border-color:#8a5d00;color:#8a5d00}
   #connDot{margin-left:auto;font-size:12px;color:#b7b0a4;display:flex;align-items:center;gap:6px}
   #connDot::before{content:"";width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
   #connDot.on::before{background:var(--ok)}
@@ -256,6 +264,10 @@
   /* Build 11 (v9.3) "Tailgate", stage 1: opens with no signal (service worker sw.js keeps the app page; IndexedDB keeps the last-seen data);
      unfinished quote kept as a draft and offered back; quote numbers handed out by the database (quote_number_seq, Q-YYYY-2500 and up).
      Saving with no signal is refused with a plain message until the outbox lands in v9.3.1 */
+  /* Build 11 (v9.3.1) "Tailgate", stage 2: the OUTBOX. Leads, new quotes, quote edits and iPad photos saved with no signal are kept
+     on the iPad (IndexedDB "outbox") and sent by themselves when signal returns. Every send is safe to repeat: the app makes the
+     customer / job / quote IDs itself, so a repeat can never double-create. Anything that needs a human (duplicate person,
+     quote signed meanwhile) is held under "Needs you" and never sent blind. */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -505,12 +517,13 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.3 — Tailgate</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.3.1 — Tailgate</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 <div id="offBanner" style="display:none"></div>
 <div id="draftBar" style="display:none"></div>
+<div id="outBar" style="display:none"></div>
 <nav>
   <button class="active" data-s="leads">Leads</button>
   <button data-s="sched"><span class="full">Schedule</span><span class="short">Sched</span></button>
@@ -767,6 +780,11 @@ const kosIdb = (function(){
     put:(s,k,v)=>run(s,"readwrite",st=>{ st.put(v,k); }),
     del:(s,k)=>run(s,"readwrite",st=>{ st.delete(k); }),
     clear:(s)=>run(s,"readwrite",st=>{ st.clear(); }),
+    all:(s)=>open().then(d=>new Promise((res,rej)=>{
+      const out=[], t=d.transaction(s,"readonly"), c=t.objectStore(s).openCursor();
+      c.onsuccess=()=>{ const cur=c.result; if(cur){ out.push(cur.value); cur.continue(); } };
+      t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
+    })),
     prune:(s,olderThanMs)=>open().then(d=>new Promise(res=>{
       const t=d.transaction(s,"readwrite"), st=t.objectStore(s), cut=Date.now()-olderThanMs;
       const c=st.openCursor();
@@ -782,7 +800,7 @@ function kosStatus(){
   if(bn){
     if(KOS.offline){
       bn.style.display="";
-      bn.innerHTML="<b>No signal.</b> You can look things up"+(KOS.servedAt?" (saved as of "+kosTime(KOS.servedAt)+")":"")+" and build a quote. Saving needs signal, so your quote is kept as a draft on this iPad until then.";
+      bn.innerHTML="<b>No signal.</b> You can look things up"+(KOS.servedAt?" (saved as of "+kosTime(KOS.servedAt)+")":"")+", add leads, build quotes and take photos. Whatever you save is kept on this iPad and sent by itself when signal returns.";
     } else bn.style.display="none";
   }
 }
@@ -803,6 +821,7 @@ function kosBackOnline(){
   if(kosProbeT){ clearInterval(kosProbeT); kosProbeT=null; }
   const was=KOS.offline; KOS.offline=false; KOS.forceOffline=false; kosStatus();
   if(was){ try{ toast("Back online"); if(typeof appBooted!=="undefined"&&appBooted){ loadLeads(); loadQuotes(); loadSchedule(); } }catch(_){} }
+  try{ setTimeout(()=>kosObRun(false),1200); }catch(_){}
 }
 window.addEventListener("online",()=>{ if(KOS.offline) kosBackOnline(); });
 window.addEventListener("offline",()=>{ KOS.offline=true; KOS.forceOffline=true; kosStatus(); });
@@ -1248,69 +1267,90 @@ async function checkLeadDup(now){
 ["lPhone","lLast","lAddr"].forEach(id=>$(id).addEventListener("input",()=>checkLeadDup(false)));
 updateLeadSaveState();
 
+function leadResetForm(){
+  ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
+  lSrcSel=null; drawSrcChips();
+  resetLeadZoneState(); loadSchedule(); /* Build 7 */
+  $("lEmg").checked=false; leadTemp="🟡";
+  document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="🟡"));
+  leadDup=null; leadUseExisting=null; renderDupStrip(); renderUseBar(); updateLeadSaveState();
+}
+async function leadQueued(p,why){
+  const name=((p.first||"")+" "+(p.last||"")).trim();
+  try{ await kosObAdd("lead","Lead — "+name,p); }
+  catch(e){
+    console.error(e);
+    $("leadMsg").textContent="Could not keep this on the iPad ("+(e.message||"storage error")+"). The form is still filled in — don't close it.";
+    toast("Not saved — nothing was stored"); return false;
+  }
+  toast("Lead saved on this iPad — sends when signal returns");
+  $("leadMsg").innerHTML="<b>Saved on this iPad ✓</b> — "+esc(name)+" will send by itself when signal returns (or tap <b>Send now</b> at the top). "+(why||"")+
+    "It shows in the Leads list after it sends.";
+  const wasReturn=returnToQuote; returnToQuote=false;
+  leadResetForm();
+  if(wasReturn) toast("Lead is waiting to send — you can start their quote once it has");
+  return true;
+}
 $("saveLead").addEventListener("click", async ()=>{
   const first=$("lFirst").value.trim(), last=$("lLast").value.trim();
   if(!first && !last){ toast("Enter at least a name"); return; }
   if(!leadUseExisting && !leadFormReady()){ toast("Add a phone number or a street address first"); updateLeadSaveState(); return; }
   if(!leadUseExisting && !lSrcSel){ toast("Tap a lead source — it feeds the Sources report later"); return; }
-  if(navigator.onLine===false){ toast("No signal — this lead is NOT saved yet. Keep this form open, or write it down."); $("leadMsg").textContent="No signal — lead not saved yet. Saving with no signal comes in the next update."; return; }
+  const offline=(navigator.onLine===false);
   const btn=$("saveLead"); btn.disabled=true; btn.textContent="Saving…";
   try{
-    let cust;
-    if(leadUseExisting){
-      cust=leadUseExisting;
-    } else {
+    if(!offline && !leadUseExisting){
       /* Build 8: final server-side check right before insert — catches a lead Tiana saved ten seconds ago */
       const dup=await findDuplicateCustomer($("lPhone").value,last,$("lAddr").value,null);
       if(dup){ leadDup=dup; renderDupStrip(); updateLeadSaveState(); btn.textContent="Save lead"; toast("Already on file — tap Use existing"); return; }
-      /* Build 6 D5: the one customer-create path in the app */
-      cust = await createCustomerRow({
-        first:first, last:last,
-        phone:$("lPhone").value.trim(), email:$("lEmail").value.trim(),
-        street:$("lAddr").value.trim(), city:$("lCity").value.trim(),
-        state:"NY", zip:null,
-        lead_source:composeSource(lSrcSel,"lSourceDetail")
-      });
     }
     const appt=$("lAppt").value ? new Date($("lAppt").value).toISOString() : null;
-    /* Build 7: resolve the zone; Milford + unknown towns must be answered first */
+    /* Build 7: resolve the zone; Milford + unknown towns must be answered first (with no signal, it is saved without a zone) */
     const cityVal=$("lCity").value.trim();
     let leadZone=null;
     if(cityVal){
       const zr=resolveZone(cityVal);
       if(!zr.ask) leadZone=zr.zone;
       else if(pendingLeadZone!==null) leadZone=pendingLeadZone;
-      else {
+      else if(!offline){
         renderZonePrompt("lZonePrompt", cityVal, !!zr.milford, async z=>{
           pendingLeadZone=z;
           if(!zr.milford) await learnTown(cityVal, z);
           toast(z===0?"Marked one-off — tap Save lead again":"Zone "+z+" — tap Save lead again");
         });
         toast(zr.milford?"Which Milford? Tap a zone first":"New town — tap its zone first");
-        btn.disabled=false; btn.textContent="Save lead";
+        btn.textContent="Save lead"; updateLeadSaveState();
         return;
       }
     }
-    const {data:newJob,error:e2} = await db.from("jobs").insert({
-      customer_id:cust.id,job_type:$("lType").value,status:"Lead",
-      street_address:$("lAddr").value.trim()||null,city:cityVal||null,state:"NY",
-      appointment:appt,temperature:leadTemp,emergency:$("lEmg").checked,
-      zone:leadZone, /* Build 7 */
-      notes:$("lNote").value.trim()||null
-    }).select().single();
-    if(e2) throw e2;
-    toast("Lead saved"+($("lEmg").checked?" — 🚨 flagged":""));
-    $("leadMsg").textContent="Lead saved. It's in the list below — Start Quote is on the row.";
-    ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
-    lSrcSel=null; drawSrcChips();
-    resetLeadZoneState(); loadSchedule(); /* Build 7 */
-    $("lEmg").checked=false; leadTemp="🟡";
-    document.querySelectorAll(".tempBtn").forEach(x=>x.classList.toggle("sel",x.dataset.t==="🟡"));
-    leadDup=null; leadUseExisting=null; renderDupStrip(); renderUseBar(); updateLeadSaveState();
-    loadLeads();
-    if(returnToQuote && newJob){ /* Build 8: New Quote sent us here — go straight back with them picked */
-      returnToQuote=false;
-      startQuoteFromLead({...newJob, customers:cust});
+    const p={
+      kind:"lead", first:first, last:last,
+      phone:$("lPhone").value.trim(), email:$("lEmail").value.trim(),
+      addr:$("lAddr").value.trim(), city:cityVal,
+      source:leadUseExisting?null:composeSource(lSrcSel,"lSourceDetail"),
+      existingCust:leadUseExisting?JSON.parse(JSON.stringify(leadUseExisting)):null,
+      type:$("lType").value, appt:appt, temp:leadTemp, emg:$("lEmg").checked, zone:leadZone,
+      note:$("lNote").value.trim(),
+      ids:{cust:crypto.randomUUID(), job:crypto.randomUUID()}
+    };
+    if(offline){ await leadQueued(p, leadZone==null&&cityVal?"(No zone yet — it is set when you open the lead.) ":""); }
+    else{
+      let r=null;
+      try{ r=await leadCommit(p); }
+      catch(err){
+        if(kosIsNetErr(err)&&!(err&&err.needs)){ await leadQueued(p,"(Signal dropped mid-save — nothing is lost, and sending again can't create a copy.) "); }
+        else throw err;
+      }
+      if(r){
+        toast("Lead saved"+(p.emg?" — 🚨 flagged":""));
+        $("leadMsg").textContent="Lead saved. It's in the list below — Start Quote is on the row.";
+        leadResetForm();
+        loadLeads();
+        if(returnToQuote && r.job){ /* Build 8: New Quote sent us here — go straight back with them picked */
+          returnToQuote=false;
+          startQuoteFromLead({...r.job, customers:r.cust});
+        }
+      }
     }
   }catch(err){
     console.error(err);
@@ -2232,6 +2272,9 @@ async function resizePhoto(file,max=1600,quality=0.82){
 async function uploadQuotePhoto(quoteId,file){
   const blob=await resizePhoto(file);
   if(!blob) throw new Error("could not process photo");
+  return uploadQuotePhotoBlob(quoteId,blob);
+}
+async function uploadQuotePhotoBlob(quoteId,blob){
   const path=quoteId+"/"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+".jpg";
   const {error}=await db.storage.from("quote-photos").upload(path,blob,{contentType:"image/jpeg"});
   if(error) throw error;
@@ -2242,6 +2285,17 @@ $("qPhotoInput").addEventListener("change",async e=>{
   if(!files.length||!qPhotoTarget) return;
   const q=quotesCache.find(x=>x.id===qPhotoTarget);
   if(!q) return;
+  /* Build 11 (v9.3.1): with no signal the photos are resized now and kept on the iPad until they can go up */
+  const queue=async why=>{
+    const recs=[];
+    for(const f of files){ const b=await resizePhoto(f); if(!b) throw new Error("could not process photo"); recs.push({buf:await b.arrayBuffer(),type:b.type||"image/jpeg"}); }
+    await kosObAdd("photos",files.length+" photo"+(files.length>1?"s":"")+" for "+q.quote_number,{quoteId:q.id,qnum:q.quote_number,recs,uploaded:[]});
+    toast(why+"Saved on this iPad — the photos go up when signal returns");
+  };
+  if(navigator.onLine===false){
+    try{ await queue(""); }catch(err){ toast("Photos not saved: "+(err.message||"unknown error")); }
+    return;
+  }
   toast("Uploading "+files.length+" photo"+(files.length>1?"s":"")+"…");
   try{
     const urls=[];
@@ -2252,7 +2306,10 @@ $("qPhotoInput").addEventListener("change",async e=>{
     q.photos=photos;
     toast(photos.length+" photo"+(photos.length!==1?"s":"")+" saved — first one is the cover");
     renderQuoteList(q.id);
-  }catch(err){ toast("Photo upload failed: "+(err.message||"unknown error")); }
+  }catch(err){
+    if(kosIsNetErr(err)){ try{ await queue("Signal dropped. "); return; }catch(e2){ err=e2; } }
+    toast("Photo upload failed: "+(err.message||"unknown error"));
+  }
 });
 $("pvPhotoInput").addEventListener("change",async e=>{
   const files=[...e.target.files];
@@ -2650,6 +2707,190 @@ document.addEventListener("click", async e=>{
   b.textContent = ok ? "✓ Link sent" : "Share to sign now";
   b.disabled = ok;
 });
+/* Build 11 (v9.3.1): saving a quote is now two halves — CAPTURE (read everything off the screen into one plain package) and
+   COMMIT (write that package to the database). The package can wait in the outbox and be committed later, safely repeatable. */
+function quoteCapture(){
+  const filled=options.filter(o=>o.lines.length);
+  const szRaw=($("cSize")?$("cSize").value.trim():"");
+  const jobSize=szRaw===""?null:(isNaN(parseFloat(szRaw))?null:parseFloat(szRaw));
+  const isNewCust=!editingQuote && !pendingLead && !pickedCustomer;
+  const first=$("cFirst").value.trim(), last=$("cLast").value.trim();
+  return {
+    kind:"quote", first:first, last:last,
+    phone:$("cPhone").value.trim(), email:$("cEmail").value.trim(),
+    addr:$("cAddr").value.trim(), city:$("cCity").value.trim(),
+    state:$("cState").value.trim()||"NY", zip:$("cZip").value.trim(),
+    jobSize:jobSize, jobSizeUnit:jobSize==null?null:$("cSizeUnit").value,
+    railLF:Number(($("lfInput")&&$("lfInput").value)||0),
+    trade:currentTrade,
+    phasing:(TRADES[currentTrade].phasing && phases.length) ? phases.map(p=>({pct:p.pct,label:p.label})) : null,
+    options:JSON.parse(JSON.stringify(filled)),
+    editing:editingQuote?{...editingQuote}:null,
+    lead:pendingLead?{jobId:pendingLead.jobId,customerId:pendingLead.customerId}:null,
+    pickedId:pickedCustomer?pickedCustomer.id:null,
+    source:isNewCust?composeSource(cSrcSel,"cSourceDetail"):null,
+    cc:(builderCc&&builderCc.id)?{id:builderCc.id,name:builderCc.name,jobId:builderCc.jobId}:null,
+    photos:[...builderPhotos],
+    ids:{quote:pendingQuoteId||crypto.randomUUID(), job:crypto.randomUUID(), cust:crypto.randomUUID()}
+  };
+}
+async function quoteCommit(p, persist){
+  const first=p.first, last=p.last, filled=p.options, ed=p.editing;
+  let cust;
+  const syncContact=async id=>{
+    const {error:eCu}=await db.from("customers").update({first_name:first,last_name:last,phone:p.phone||null,email:p.email||null}).eq("id",id);
+    if(eCu) console.error("contact update skipped",eCu);
+  };
+  if(ed){ cust={id:ed.customerId}; if(cust.id) await syncContact(cust.id); }
+  else if(p.lead){ cust={id:p.lead.customerId}; }
+  else if(p.pickedId){ cust={id:p.pickedId}; await syncContact(cust.id); } /* lead_source is NEVER overwritten */
+  else{ cust=await createCustomerRow({id:p.ids.cust,first:first,last:last,phone:p.phone,email:p.email,street:p.addr,city:p.city,state:p.state,zip:p.zip,lead_source:p.source}); }
+  /* job type reflects every trade with a package across all options */
+  const tradeName=t=>t==="Repair"?"Roof Repair":t;
+  const allLines=filled.flatMap(o=>o.lines);
+  const pkgTrades=[...new Set(allLines.filter(l=>l.trade).map(l=>l.trade))];
+  const jobType=pkgTrades.length>1?pkgTrades.map(tradeName).join(" + "):tradeName(pkgTrades[0]||p.trade);
+  let job;
+  if(ed){
+    const {data,error:e2}=await db.from("jobs").update({
+      job_type:jobType, street_address:p.addr||null, city:p.city||null, state:p.state||"NY", zip:p.zip||null,
+      job_size:p.jobSize, job_size_unit:p.jobSizeUnit
+    }).eq("id",ed.jobId).select().single();
+    if(e2) throw e2; job=data;
+  } else if(p.lead){
+    const {data,error:e2}=await db.from("jobs").update({
+      job_type:jobType, status:"Quoted", street_address:p.addr||null, city:p.city||null,
+      job_size:p.jobSize, job_size_unit:p.jobSizeUnit
+    }).eq("id",p.lead.jobId).select().single();
+    if(e2) throw e2; job=data;
+  } else {
+    job=await insertIdem("jobs",{
+      id:p.ids.job, customer_id:cust.id, job_type:jobType, status:"Quoted",
+      street_address:p.addr||null, city:p.city||null, state:p.state||"NY", zip:p.zip||null,
+      job_size:p.jobSize, job_size_unit:p.jobSizeUnit
+    });
+  }
+  if(p.cc && p.cc.jobId!==job.id){ /* Build 10: remembered on the job, never blocks the save */
+    const {error:eCc}=await db.from("jobs").update({companycam_project_id:p.cc.id,companycam_project_name:p.cc.name}).eq("id",job.id);
+    if(eCc) console.error("companycam tie not saved",eCc);
+  }
+  let qNum=ed?ed.number:null;
+  const optTotals=filled.map(o=>({label:o.label,tier:o.tier,
+    price:o.lines.reduce((s,l)=>s+l.qty*l.price,0),
+    cost:o.lines.reduce((s,l)=>s+l.qty*(((l.L||0)+(l.M||0)+(l.O||0))),0)}));
+  const t={price:optTotals[0].price, cost:optTotals[0].cost,
+    L:filled[0].lines.reduce((s,l)=>s+l.qty*(l.L||0),0),
+    M:filled[0].lines.reduce((s,l)=>s+l.qty*(l.M||0),0),
+    O:filled[0].lines.reduce((s,l)=>s+l.qty*(l.O||0),0)};
+  t.margin=t.price>0?(t.price-t.cost)/t.price*100:0;
+  let notes="trade:"+(pkgTrades.length?pkgTrades.join(" + "):p.trade)
+    +";cost:"+t.cost.toFixed(2)+";L:"+t.L.toFixed(2)+";M:"+t.M.toFixed(2)+";O:"+t.O.toFixed(2)
+    +";margin:"+(t.margin?t.margin.toFixed(1):"0");
+  if(filled.length>1) notes+=";optiontotals:"+optTotals.map(o=>o.label+"="+Math.round(o.price)+(o.tier?"("+o.tier+")":"")).join("|");
+  if(p.phasing&&p.phasing.length) notes+=";phasing:"+p.phasing.map(x=>x.pct+"% "+x.label).join(" / ");
+  if(p.railLF>0 && pkgTrades.includes("Decking")) notes+=";raillf:"+p.railLF;
+  if(p.trade==="Repair") notes+=";NO-WARRANTY repair terms apply";
+  const hasLocal=(p.photos||[]).some(e=>String(e).indexOf("local:")===0);
+  let quote;
+  if(ed){
+    /* Build 5 race guard: the customer may have SIGNED while this edit was open (or waiting in the outbox).
+       A signed quote is sacred — re-check the live row and stop untouched if so. */
+    const {data:fresh,error:eFr}=await db.from("quotes").select("notes").eq("id",ed.id).single();
+    if(eFr){
+      if(eFr.code==="PGRST116"){ const e=new Error(qNum+" no longer exists — nothing was changed."); e.needs=true; throw e; }
+      throw eFr;
+    }
+    if(parseNotes(fresh.notes).signedby){
+      const e=new Error(qNum+" was SIGNED while this edit was waiting — nothing was changed. Use Duplicate as new on the Quotes tab instead.");
+      e.needs=true; throw e;
+    }
+    const {data,error:e3}=await db.from("quotes").update({
+      title:jobType+" Quote", tier:filled[0].tier||"Standard", notes:notes,
+      valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
+    }).eq("id",ed.id).select().single();
+    if(e3) throw e3;
+    quote=data;
+    /* D1: old share links hold the OLD frozen snapshot — they die at edit-save. Failure here ABORTS the save. */
+    const {error:eSh}=await db.from("proposal_shares").delete().eq("quote_id",quote.id);
+    if(eSh) throw new Error("could not expire old share links — quote not updated fully ("+eSh.message+")");
+    const {error:eLi}=await db.from("quote_line_items").delete().eq("quote_id",quote.id);
+    if(eLi) throw eLi;
+  } else {
+    const row={
+      id:p.ids.quote,
+      ...((p.photos&&p.photos.length&&!hasLocal)?{photos:p.photos}:{}),
+      job_id:job.id, title:jobType+" Quote", tier:filled[0].tier||"Standard", status:"Draft", markup_pct:0,
+      notes:notes, valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
+    };
+    try{ quote=await insertIdem("quotes",row); }
+    catch(err){
+      if(/quote_number/i.test((err&&err.message)||"")){
+        /* the number-counter SQL has not been run — fall back to the old counting so saving never breaks */
+        const {count}=await db.from("quotes").select("*",{count:"exact",head:true});
+        quote=await insertIdem("quotes",{...row,quote_number:"Q-"+new Date().getFullYear()+"-"+String((count||0)+1).padStart(3,"0")});
+      } else throw err;
+    }
+    qNum=quote.quote_number;
+  }
+  const rows=filled.flatMap((o,oi)=>o.lines.map((l,i)=>({
+    quote_id:quote.id, sort_order:oi*100+i,
+    category:l.isPackage?"Package":(l.isCustom?"Custom":"Add-on"),
+    option_label:filled.length>1?o.label:null,
+    trade:l.trade||o.trade||null,
+    name:l.name, unit:l.unit, quantity:l.qty, unit_cost:l.price
+  })));
+  if(!ed){ /* a repeat send starts from a clean slate so lines can never double up */
+    const {error:eDel}=await db.from("quote_line_items").delete().eq("quote_id",quote.id);
+    if(eDel) throw eDel;
+  }
+  const {error:e4}=await db.from("quote_line_items").insert(rows);
+  if(e4) throw e4;
+  if(hasLocal){ /* photos taken with no signal go up now, in the order they were taken */
+    p.uploaded=p.uploaded||{};
+    const finalList=[];
+    for(const e of p.photos){
+      if(String(e).indexOf("local:")===0){
+        const id=e.slice(6);
+        if(!p.uploaded[id]){
+          const b=await kosBlobGet(id); if(!b) continue;
+          p.uploaded[id]=await uploadQuotePhotoBlob(quote.id,b);
+          if(persist) await persist();
+        }
+        finalList.push(p.uploaded[id]);
+      } else finalList.push(e);
+    }
+    const {error:eP}=await db.from("quotes").update({photos:finalList}).eq("id",quote.id);
+    if(eP) throw eP;
+    p.photos.forEach(e=>{ if(String(e).indexOf("local:")===0) kosIdb.del("kv","pb:"+e.slice(6)).catch(()=>{}); });
+  }
+  return {quote, qNum, jobType, optTotals, filledN:filled.length};
+}
+function resetBuilderAfterSave(){
+  editingQuote=null; pendingLead=null; renderLeadBanner(); kosDraftClear(); /* Build 11: saved for real — the draft is done */
+  resetOptions(); phases=[]; renderLines();
+  document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
+  ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput","cSourceDetail","custSearch"].forEach(id=>{ if($(id)) $(id).value=""; });
+  builderPhotos=[]; pendingQuoteId=null; pickedCustomer=null; cSrcSel=null; ccReset();
+  renderBPhotos(); drawSrcChips(); setCustMode("search");
+  (TRADES[currentTrade].toggles||[]).forEach(tg=>{ if($(tg.id)) $(tg.id).checked=false; });
+  (TRADES[currentTrade].selects||[]).forEach(s=>{ if($(s.id)) $(s.id).value=0; });
+}
+async function quoteQueued(p, why){
+  const name=(p.first+" "+p.last).trim();
+  const label=p.editing?("Change to "+p.editing.number+" — "+name):("Quote — "+name);
+  try{ await kosObAdd("quote",label,p); }
+  catch(e){
+    console.error(e);
+    $("saveMsg").textContent="Could not keep this on the iPad ("+(e.message||"storage error")+"). Your quote is still on screen — don't close it. Try Save again with signal.";
+    toast("Not saved — nothing was stored"); return false;
+  }
+  toast("Saved on this iPad — sends when signal returns");
+  $("saveMsg").innerHTML="<b>Saved on this iPad ✓</b> — "+(p.editing?"the change to "+esc(p.editing.number):"the quote for "+esc(name))+
+    " will send by itself when signal returns (or tap <b>Send now</b> at the top). "+
+    (p.editing?"":"Its quote number is handed out when it sends. ")+(why||"");
+  resetBuilderAfterSave();
+  return true;
+}
 async function saveQuote(){
   syncActiveOption();
   const first=$("cFirst").value.trim(), last=$("cLast").value.trim();
@@ -2658,194 +2899,35 @@ async function saveQuote(){
   if(!filled.length){ toast("Add at least one line"); return; }
   const unnamed=filled.flatMap(o=>o.lines).find(l=>l.isCustom && !l.matHandling && !l.name.trim());
   if(unnamed){ toast("Describe your custom charge before saving"); return; }
-  if(navigator.onLine===false){ /* Build 11: no signal — nothing is sent, the quote is kept as a draft on this iPad */
-    kosDraftPending=false; kosDraftLast=""; kosDraftSave();
-    $("saveMsg").textContent="No signal — not saved yet. Your quote is kept as a draft on this iPad; open New Quote when you have signal and tap Save.";
-    toast("No signal — kept as a draft on this iPad"); return;
-  }
+  if(!editingQuote && !pendingLead && !pickedCustomer && !cSrcSel){ toast("Tap a lead source for this new customer"); return; }
+  const p=quoteCapture();
   const btn=$("tapeSave"); btn.disabled=true; btn.textContent="Saving…";
   try{
-    let cust;
-    if(editingQuote){ /* Build 5: reuse the quote's customer; sync contact edits non-fatally */
-      cust={id:editingQuote.customerId};
-      if(cust.id){
-        const {error:eCu}=await db.from("customers").update({
-          first_name:first,last_name:last,
-          phone:$("cPhone").value.trim()||null,email:$("cEmail").value.trim()||null
-        }).eq("id",cust.id);
-        if(eCu) toast("Contact update skipped: "+eCu.message);
+    if(navigator.onLine===false){ await quoteQueued(p); }
+    else{
+      let r;
+      try{ r=await quoteCommit(p); }
+      catch(err){
+        if(kosIsNetErr(err) && !(err&&err.needs)){ await quoteQueued(p,"(Signal dropped mid-save — nothing is lost, and sending again can't create a copy.)"); r=null; }
+        else throw err;
       }
-    } else if(pendingLead){
-      cust={id:pendingLead.customerId};
-    } else if(pickedCustomer){
-      /* Build 6 Front Door: existing customer picked — reuse their row, never a duplicate.
-         Contact edits sync non-fatally (same pattern as edit mode); lead_source is
-         NEVER overwritten — the source is how they FIRST found you. */
-      cust={id:pickedCustomer.id};
-      const {error:eCu}=await db.from("customers").update({
-        first_name:first,last_name:last,
-        phone:$("cPhone").value.trim()||null,email:$("cEmail").value.trim()||null
-      }).eq("id",cust.id);
-      if(eCu) toast("Contact update skipped: "+eCu.message);
-    } else {
-      /* Build 6 D5: same create path as the Leads tab */
-      if(!cSrcSel){ toast("Tap a lead source for this new customer"); btn.disabled=false; btn.textContent="Save"; return; }
-      cust = await createCustomerRow({
-        first:first, last:last,
-        phone:$("cPhone").value.trim(), email:$("cEmail").value.trim(),
-        street:$("cAddr").value.trim(), city:$("cCity").value.trim(),
-        state:$("cState").value.trim()||"NY", zip:$("cZip").value.trim(),
-        lead_source:composeSource(cSrcSel,"cSourceDetail")
-      });
-    }
-    /* job type reflects every trade with a package across all options */
-    const tradeName = t => t==="Repair" ? "Roof Repair" : t;
-    const allLines = filled.flatMap(o=>o.lines);
-    const pkgTrades = [...new Set(allLines.filter(l=>l.trade).map(l=>l.trade))];
-    const jobType = pkgTrades.length>1 ? pkgTrades.map(tradeName).join(" + ")
-                  : tradeName(pkgTrades[0]||currentTrade);
-    /* Build 7.5: internal job size — optional, blank saves as null */
-    const szRaw = ($("cSize")?$("cSize").value.trim():"");
-    const jobSize = szRaw==="" ? null : (isNaN(parseFloat(szRaw)) ? null : parseFloat(szRaw));
-    const jobSizeUnit = jobSize==null ? null : $("cSizeUnit").value;
-    let job;
-    if(editingQuote){ /* Build 5: same job, refreshed details — status untouched */
-      const {data,error:e2} = await db.from("jobs").update({
-        job_type:jobType,
-        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
-        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
-        job_size:jobSize,job_size_unit:jobSizeUnit
-      }).eq("id",editingQuote.jobId).select().single();
-      if(e2) throw e2;
-      job=data;
-    } else if(pendingLead){
-      const {data,error:e2} = await db.from("jobs").update({
-        job_type:jobType,status:"Quoted",
-        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
-        job_size:jobSize,job_size_unit:jobSizeUnit
-      }).eq("id",pendingLead.jobId).select().single();
-      if(e2) throw e2;
-      job=data;
-    } else {
-      const {data,error:e2} = await db.from("jobs").insert({
-        customer_id:cust.id,job_type:jobType,status:"Quoted",
-        street_address:$("cAddr").value.trim()||null,city:$("cCity").value.trim()||null,
-        state:$("cState").value.trim()||"NY",zip:$("cZip").value.trim()||null,
-        job_size:jobSize,job_size_unit:jobSizeUnit
-      }).select().single();
-      if(e2) throw e2;
-      job=data;
-    }
-    /* Build 10: a CompanyCam project picked before the job existed is remembered on the job now (never blocks the save) */
-    if(builderCc && builderCc.id && builderCc.jobId!==job.id){
-      const {error:eCc}=await db.from("jobs").update({companycam_project_id:builderCc.id,companycam_project_name:builderCc.name}).eq("id",job.id);
-      if(eCc) console.error("companycam tie not saved",eCc);
-    }
-    /* Build 5: an edited quote keeps its number forever. Build 11: a NEW quote's number is handed out by the
-       database at the moment it is saved (Q-2026-2500 and up), so two saves can never collide. */
-    let qNum = editingQuote ? editingQuote.number : null;
-    const optTotals=filled.map(o=>({label:o.label,tier:o.tier,
-      price:o.lines.reduce((s,l)=>s+l.qty*l.price,0),
-      cost:o.lines.reduce((s,l)=>s+l.qty*(((l.L||0)+(l.M||0)+(l.O||0))),0)}));
-    const t={price:optTotals[0].price,
-      cost:optTotals[0].cost,
-      L:filled[0].lines.reduce((s,l)=>s+l.qty*(l.L||0),0),
-      M:filled[0].lines.reduce((s,l)=>s+l.qty*(l.M||0),0),
-      O:filled[0].lines.reduce((s,l)=>s+l.qty*(l.O||0),0)};
-    t.margin = t.price>0 ? (t.price-t.cost)/t.price*100 : 0;
-    let notes = "trade:"+(pkgTrades.length?pkgTrades.join(" + "):currentTrade)
-      +";cost:"+t.cost.toFixed(2)
-      +";L:"+t.L.toFixed(2)+";M:"+t.M.toFixed(2)+";O:"+t.O.toFixed(2)
-      +";margin:"+(t.margin?t.margin.toFixed(1):"0");
-    if(filled.length>1) notes += ";optiontotals:"+optTotals.map(o=>o.label+"="+Math.round(o.price)+(o.tier?"("+o.tier+")":"")).join("|");
-    if(TRADES[currentTrade].phasing && phases.length){
-      notes += ";phasing:"+phases.map(p=>p.pct+"% "+p.label).join(" / ");
-    }
-    /* Build 4 Decision #1: railing LF rides in notes; no LF = no railing upsell on shares */
-    const railLF = Number(($("lfInput")&&$("lfInput").value)||0);
-    if(railLF>0 && pkgTrades.includes("Decking")) notes += ";raillf:"+railLF;
-    if(currentTrade==="Repair"){ notes += ";NO-WARRANTY repair terms apply"; }
-    let quote;
-    if(editingQuote){
-      /* Build 5 race guard: the customer may have SIGNED while this edit was open.
-         A signed quote is sacred — re-check the live row and abort untouched if so. */
-      const {data:fresh,error:eFr}=await db.from("quotes").select("notes").eq("id",editingQuote.id).single();
-      if(eFr) throw eFr;
-      if(parseNotes(fresh.notes).signedby)
-        throw new Error(qNum+" was SIGNED while you were editing — nothing was changed. Reload the Quotes tab and use Duplicate as new instead.");
-      /* Build 5: UPDATE in place — same id, same number, same status, photos untouched */
-      const {data,error:e3} = await db.from("quotes").update({
-        title:jobType+" Quote",tier:filled[0].tier||"Standard",
-        notes:notes,
-        valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
-      }).eq("id",editingQuote.id).select().single();
-      if(e3) throw e3;
-      quote=data;
-      /* D1: old share links hold the OLD frozen snapshot — they die at edit-save
-         so a customer can never sign a stale price. Failure here ABORTS the save. */
-      const {error:eSh}=await db.from("proposal_shares").delete().eq("quote_id",quote.id);
-      if(eSh) throw new Error("could not expire old share links — quote not updated fully ("+eSh.message+")");
-      /* wholesale line replace — simple, safe (ON DELETE CASCADE confirmed in Build 4) */
-      const {error:eLi}=await db.from("quote_line_items").delete().eq("quote_id",quote.id);
-      if(eLi) throw eLi;
-    } else {
-      /* Build 6 D1: if photos were added in the builder, the quote's ID was
-         pre-generated at first photo — the row is created WITH that ID so the
-         already-uploaded photos are on their final storage path. No photos =
-         DB generates the ID exactly as before. */
-      const newQuoteRow={
-        ...(pendingQuoteId?{id:pendingQuoteId}:{}),
-        ...(builderPhotos.length?{photos:builderPhotos}:{}),
-        job_id:job.id,title:jobType+" Quote",
-        tier:filled[0].tier||"Standard",status:"Draft",markup_pct:0,
-        notes:notes,
-        valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
-      };
-      let ins = await db.from("quotes").insert(newQuoteRow).select().single();
-      if(ins.error && /quote_number/i.test(ins.error.message||"")){
-        /* the number-counter SQL has not been run yet — fall back to the old counting so saving never breaks */
-        const {count} = await db.from("quotes").select("*",{count:"exact",head:true});
-        ins = await db.from("quotes").insert({...newQuoteRow,quote_number:"Q-"+new Date().getFullYear()+"-"+String((count||0)+1).padStart(3,"0")}).select().single();
+      if(r){
+        const {quote,qNum,jobType,optTotals,filledN}=r, ed=p.editing;
+        const opts=optTotals.map(o=>esc(o.label)+" "+fmt0(o.price)).join(" · ");
+        if(ed){
+          toast(qNum+" updated — old share links are dead");
+          $("saveMsg").innerHTML="Updated "+esc(qNum)+" ("+esc(jobType)+(filledN>1?" · "+filledN+" options":"")+") — "+opts+
+            ". Any links you'd already sent are now dead — send the new version:"+shareNowButton(quote.id);
+        } else {
+          toast(qNum+" saved"+(p.lead?" — lead converted":"")+(filledN>1?" · "+filledN+" options":""));
+          $("saveMsg").innerHTML="Saved as "+esc(qNum)+" ("+esc(jobType)+(filledN>1?" · "+filledN+" options":"")+") — "+opts+"."+shareNowButton(quote.id);
+        }
+        resetBuilderAfterSave();
       }
-      if(ins.error) throw ins.error;
-      quote=ins.data; qNum=quote.quote_number;
     }
-    const rows = filled.flatMap((o,oi)=>o.lines.map((l,i)=>({
-      quote_id:quote.id,sort_order:oi*100+i,
-      category:l.isPackage?"Package":(l.isCustom?"Custom":"Add-on"),
-      option_label:filled.length>1?o.label:null,
-      trade:l.trade||o.trade||null, /* Build 3: NULL = legacy, renders as today */
-      name:l.name,unit:l.unit,quantity:l.qty,unit_cost:l.price
-    })));
-    const {error:e4} = await db.from("quote_line_items").insert(rows);
-    if(e4) throw e4;
-
-    if(editingQuote){
-      toast(qNum+" updated — old share links are dead");
-      $("saveMsg").innerHTML="Updated "+esc(qNum)+" ("+esc(jobType)+(filled.length>1?" · "+filled.length+" options":"")+") — "+
-        optTotals.map(o=>esc(o.label)+" "+fmt0(o.price)).join(" · ")+
-        ". Any links you'd already sent are now dead — send the new version:"+shareNowButton(quote.id);
-    } else {
-      toast(qNum+" saved"+(pendingLead?" — lead converted":"")+(filled.length>1?" · "+filled.length+" options":""));
-      $("saveMsg").innerHTML="Saved as "+esc(qNum)+" ("+esc(jobType)+(filled.length>1?" · "+filled.length+" options":"")+") — "+
-        optTotals.map(o=>esc(o.label)+" "+fmt0(o.price)).join(" · ")+"."+shareNowButton(quote.id);
-    }
-    editingQuote=null; pendingLead=null; renderLeadBanner(); kosDraftClear(); /* Build 11: saved for real — the draft is done */
-    resetOptions(); phases=[]; renderLines();
-    document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
-    ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput","cSourceDetail","custSearch"].forEach(id=>{ if($(id)) $(id).value=""; });
-    /* Build 6 reset: photos belong to the saved quote now; picker back to search */
-    builderPhotos=[]; pendingQuoteId=null; pickedCustomer=null; cSrcSel=null; ccReset();
-    renderBPhotos(); drawSrcChips(); setCustMode("search");
-    (TRADES[currentTrade].toggles||[]).forEach(tg=>{ if($(tg.id)) $(tg.id).checked=false; });
-    (TRADES[currentTrade].selects||[]).forEach(s=>{ if($(s.id)) $(s.id).value=0; });
   }catch(err){
     console.error(err);
-    const netDown=/failed to fetch|no signal|network|load failed|AbortError/i.test(String(err&&err.message||err));
-    if(netDown){ kosDraftPending=false; kosDraftLast=""; kosDraftSave(); }
-    $("saveMsg").textContent = netDown
-      ? "Lost signal while saving — part of it may have saved. Your quote is kept as a draft on this iPad; check Leads and Quotes before saving again."
-      : "Save failed: "+(err.message||"unknown error")+". Check connection and retry.";
+    $("saveMsg").textContent="Save failed: "+(err.message||"unknown error")+". Your quote is still on screen — check the connection and tap Save again.";
   }
   btn.disabled=false; btn.textContent="Save";
 }
@@ -3469,13 +3551,21 @@ function composeSource(bucket, detailId){
 /* D5: the ONE customer-create path — Leads tab and New Quote both land here */
 async function createCustomerRow(f){
   const {data,error}=await db.from("customers").insert({
+    ...(f.id?{id:f.id}:{}),
     first_name:f.first||"—", last_name:f.last||"—",
     phone:f.phone||null, email:f.email||null,
     street_address:f.street||null, city:f.city||null,
     state:f.state||"NY", zip:f.zip||null,
     lead_source:f.lead_source||null
   }).select().single();
-  if(error) throw error;
+  if(error){
+    /* Build 11.1: a repeat send of the same customer (same ID) is not an error — hand back the row that is already there */
+    if(f.id && (error.code==="23505"||/duplicate key/i.test(error.message||""))){
+      const g=await db.from("customers").select("*").eq("id",f.id).single();
+      if(!g.error && g.data) return g.data;
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -3583,10 +3673,11 @@ async function pickCustomer(c){
 function renderBPhotos(){
   const el=$("bPhotoStrip"); if(!el) return;
   el.innerHTML=builderPhotos.map((u,i)=>
-    `<div class="bPh"><img src="${u}" alt="quote photo"><button type="button" data-bphd="${i}">✕</button></div>`).join("");
+    `<div class="bPh"><img src="${kosPhotoSrc(u)}" alt="quote photo"><button type="button" data-bphd="${i}">✕</button></div>`).join("");
   el.querySelectorAll("[data-bphd]").forEach(b=>b.addEventListener("click",e=>{
     e.preventDefault(); deleteBuilderPhoto(Number(b.dataset.bphd));
   }));
+  if(builderPhotos.some(x=>String(x).indexOf("local:")===0)) kosPhotoWarm().catch(()=>{});
 }
 $("bPhotoBtn").addEventListener("click",()=>$("bPhotoInput").click());
 $("bPhotoInput").addEventListener("change",async e=>{
@@ -3595,21 +3686,33 @@ $("bPhotoInput").addEventListener("change",async e=>{
   /* D1: first photo mints the quote's ID; uploads go straight to the final path */
   if(!editingQuote && !pendingQuoteId) pendingQuoteId=crypto.randomUUID();
   const qid=editingQuote?editingQuote.id:pendingQuoteId;
+  let keptLocal=0;
   toast("Uploading "+files.length+" photo"+(files.length>1?"s":"")+"…");
   try{
-    for(const f of files){ builderPhotos.push(await uploadQuotePhoto(qid,f)); }
-    if(editingQuote){ /* edit mode persists immediately — same as the detail button */
+    for(const f of files){
+      /* Build 11 (v9.3.1): no signal (or it drops) — keep the photo on the iPad; it goes up when the quote is sent */
+      if(navigator.onLine===false){ builderPhotos.push(await kosPhotoLocal(f)); keptLocal++; continue; }
+      try{ builderPhotos.push(await uploadQuotePhoto(qid,f)); }
+      catch(err){ if(kosIsNetErr(err)){ builderPhotos.push(await kosPhotoLocal(f)); keptLocal++; } else throw err; }
+    }
+    const anyLocal=builderPhotos.some(x=>String(x).indexOf("local:")===0);
+    if(editingQuote && !anyLocal){ /* edit mode persists immediately — same as the detail button */
       const {error}=await db.from("quotes").update({photos:builderPhotos}).eq("id",editingQuote.id);
       if(error) throw error;
       const q=quotesCache.find(x=>x.id===editingQuote.id); if(q) q.photos=[...builderPhotos];
     }
     renderBPhotos();
-    toast(builderPhotos.length+" photo"+(builderPhotos.length!==1?"s":"")+" on this quote — first is the cover");
+    kosDraftSoon();
+    toast(keptLocal?(keptLocal+" photo"+(keptLocal>1?"s":"")+" kept on this iPad — they go up when the quote is saved with signal"):
+      builderPhotos.length+" photo"+(builderPhotos.length!==1?"s":"")+" on this quote — first is the cover");
   }catch(err){ renderBPhotos(); toast("Photo upload failed: "+(err.message||"unknown error")); }
 });
 async function deleteBuilderPhoto(i){
   const url=builderPhotos[i]; if(!url) return;
   if(!confirm("Remove this photo from the quote?")) return;
+  if(String(url).indexOf("local:")===0){ /* kept on the iPad only — nothing on the server to undo */
+    builderPhotos.splice(i,1); kosIdb.del("kv","pb:"+url.slice(6)).catch(()=>{}); renderBPhotos(); kosDraftSoon(); return;
+  }
   if(editingQuote){ /* DB row first — a photo must never vanish from storage while the quote still lists it */
     const next=builderPhotos.filter((_,x)=>x!==i);
     const {error}=await db.from("quotes").update({photos:next}).eq("id",editingQuote.id);
@@ -3868,6 +3971,194 @@ function kosDraftRestore(d){
     console.error(err);
     toast("Could not restore that draft: "+(err.message||"unknown")+" — it is still saved");
   }
+}
+
+/* ============ BUILD 11 (v9.3.1) — TAILGATE: the outbox ============
+   Nothing saved with no signal is ever lost or guessed at. It is written to this iPad first ("outbox"), shown in the
+   green bar at the top, and sent by itself when signal returns. The app hands out the customer / job / quote IDs itself,
+   so sending the same item twice can never create a second copy. */
+const KOS_OB = {items:[], running:false, loaded:false, armed:null};
+function kosIsNetErr(err){
+  const m=String(err&&(err.message||err)||"");
+  return /failed to fetch|no signal|network|load failed|abort|timed? ?out|fetch|jwt|not authenticated|refresh token|\b50[234]\b|bad gateway|unavailable|gateway/i.test(m)
+    || (err&&err.name==="TypeError");
+}
+async function kosObLoad(){
+  try{
+    const all=await kosIdb.all("outbox");
+    KOS_OB.items=(all||[]).filter(x=>x&&x.id).sort((a,b)=>a.created-b.created);
+  }catch(_){ KOS_OB.items=[]; }
+  KOS_OB.loaded=true; kosObRender();
+}
+async function kosObSave(it){ try{ await kosIdb.put("outbox",it.id,it); }catch(e){ console.error("outbox save failed",e); } }
+async function kosObAdd(kind,label,payload){
+  const it={id:crypto.randomUUID(),kind,label,created:Date.now(),state:"waiting",note:"",tries:0,payload};
+  await kosIdb.put("outbox",it.id,it); /* if this throws, the caller must NOT tell the user it was saved */
+  KOS_OB.items.push(it); kosObRender();
+  try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(_){}
+  return it;
+}
+/* photos taken with no signal: resized now, kept as bytes on the iPad until they can be uploaded */
+async function kosBlobPut(id,blob){ const buf=await blob.arrayBuffer(); await kosIdb.put("kv","pb:"+id,{buf,type:blob.type||"image/jpeg"}); }
+async function kosBlobGet(id){ try{ const r=await kosIdb.get("kv","pb:"+id); return r?new Blob([r.buf],{type:r.type}):null; }catch(_){ return null; } }
+const kosLP = {}; /* id -> object URL for previews */
+async function kosPhotoLocal(file){
+  const blob=await resizePhoto(file);
+  if(!blob) throw new Error("could not process photo");
+  const id=crypto.randomUUID();
+  await kosBlobPut(id,blob);
+  kosLP[id]=URL.createObjectURL(blob);
+  return "local:"+id;
+}
+function kosPhotoSrc(entry){
+  if(String(entry).indexOf("local:")!==0) return entry;
+  const id=entry.slice(6);
+  return kosLP[id]||"data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+}
+async function kosPhotoWarm(){
+  let any=false;
+  for(const e of builderPhotos){
+    if(String(e).indexOf("local:")===0 && !kosLP[e.slice(6)]){
+      const b=await kosBlobGet(e.slice(6)); if(b){ kosLP[e.slice(6)]=URL.createObjectURL(b); any=true; }
+    }
+  }
+  if(any) renderBPhotos();
+}
+async function kosObDrop(it){
+  try{
+    const p=it.payload||{};
+    (p.photos||[]).forEach(e=>{ if(String(e).indexOf("local:")===0) kosIdb.del("kv","pb:"+e.slice(6)).catch(()=>{}); });
+  }catch(_){}
+  try{ await kosIdb.del("outbox",it.id); }catch(_){}
+  KOS_OB.items=KOS_OB.items.filter(x=>x.id!==it.id); kosObRender();
+}
+async function kosObSendOne(it){
+  const persist=()=>kosObSave(it);
+  if(it.kind==="lead"){
+    const r=await leadCommit({...it.payload,fromOutbox:true});
+    return "Lead: "+((r.cust&&((r.cust.first_name||"")+" "+(r.cust.last_name||"")))||it.label).trim();
+  }
+  if(it.kind==="quote"){
+    const r=await quoteCommit(it.payload,persist);
+    return (r.qNum||"Quote")+" "+(it.payload.editing?"updated":"sent")+" — "+it.payload.first+" "+it.payload.last;
+  }
+  if(it.kind==="photos"){
+    const p=it.payload; p.uploaded=p.uploaded||[];
+    for(let i=p.uploaded.length;i<p.recs.length;i++){
+      const b=new Blob([p.recs[i].buf],{type:p.recs[i].type||"image/jpeg"});
+      p.uploaded.push(await uploadQuotePhotoBlob(p.quoteId,b)); await persist();
+    }
+    const {data:cur,error:e1}=await db.from("quotes").select("photos").eq("id",p.quoteId).single();
+    if(e1) throw e1;
+    const have=cur.photos||[];
+    const merged=[...have,...p.uploaded.filter(u=>have.indexOf(u)<0)];
+    const {error:e2}=await db.from("quotes").update({photos:merged}).eq("id",p.quoteId);
+    if(e2) throw e2;
+    return p.uploaded.length+" photo"+(p.uploaded.length>1?"s":"")+" added to "+(p.qnum||"the quote");
+  }
+  throw new Error("unknown saved item");
+}
+async function kosObRun(manual){
+  if(!KOS_OB.loaded) await kosObLoad();
+  if(KOS_OB.running) return;
+  const list=KOS_OB.items.filter(i=>i.state!=="needs").sort((a,b)=>a.created-b.created);
+  if(!list.length){ if(manual) toast("Nothing waiting"); return; }
+  if(navigator.onLine===false){ if(manual) toast("Still no signal — everything is safe on this iPad"); kosObRender(); return; }
+  KOS_OB.running=true; kosObRender();
+  const done=[]; let stopped=false;
+  try{
+    for(const it of list){
+      try{
+        const msg=await kosObSendOne(it);
+        await kosObDrop(it); done.push(msg);
+      }catch(err){
+        console.error("outbox send failed",err);
+        const msg=String(err&&err.message||err);
+        if(err&&err.needs){ it.state="needs"; it.note=msg; it.dupId=err.dupId||null; it.dup=err.dup||null; }
+        else if(kosIsNetErr(err)){ it.note="waiting for signal"; stopped=true; }
+        else { it.tries=(it.tries||0)+1; it.note=msg; if(it.tries>=3) it.state="needs"; }
+        await kosObSave(it);
+        if(stopped) break;
+      }
+    }
+  } finally { KOS_OB.running=false; kosObRender(); }
+  if(done.length){
+    toast("Sent: "+done.join(" · "));
+    try{ if(typeof appBooted!=="undefined"&&appBooted){ loadLeads(); loadQuotes(); loadSchedule(); } }catch(_){}
+  } else if(manual && stopped){ toast("Couldn't reach the server — will keep trying"); }
+}
+function kosObRender(){
+  const el=$("outBar"); if(!el) return;
+  const items=KOS_OB.items;
+  if(!items.length){ el.style.display="none"; el.innerHTML=""; return; }
+  const waiting=items.filter(i=>i.state!=="needs"), needs=items.filter(i=>i.state==="needs");
+  let h="";
+  if(waiting.length){
+    const offline=(navigator.onLine===false||KOS.offline);
+    h+='<div class="dbRow"><span>📥 <b>Saved on this iPad — '+waiting.length+' waiting to send.</b> '+
+       (KOS_OB.running?"Sending…":(offline?"Sends by itself when signal returns.":"Sending shortly."))+'</span>'+
+       '<button type="button" class="go" data-ob="send"'+(KOS_OB.running?" disabled":"")+'>Send now</button></div>'+
+       '<div class="obList">'+waiting.map(i=>"• "+esc(i.label)+(i.note?" <i>("+esc(i.note)+")</i>":"")).join("<br>")+'</div>';
+  }
+  needs.forEach(i=>{
+    h+='<div class="obNeed"><div><b>Needs you:</b> '+esc(i.label)+' — '+esc(i.note||"")+'</div><div class="dbRow left">'+
+       (i.dupId?'<button type="button" data-ob="use" data-id="'+esc(i.id)+'">Use the person on file</button>':"")+
+       '<button type="button" data-ob="retry" data-id="'+esc(i.id)+'">Try again</button>'+
+       '<button type="button" data-ob="drop" data-id="'+esc(i.id)+'">'+(KOS_OB.armed===i.id?"Tap again to delete it":"Discard")+'</button></div></div>';
+  });
+  el.innerHTML=h; el.style.display="";
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest&&e.target.closest("#outBar [data-ob]"); if(!b) return;
+  const act=b.dataset.ob, id=b.dataset.id, it=KOS_OB.items.find(x=>x.id===id);
+  if(act==="send"){ kosObRun(true); return; }
+  if(!it) return;
+  if(act==="retry"){ it.state="waiting"; it.tries=0; it.note=""; await kosObSave(it); kosObRender(); kosObRun(true); }
+  else if(act==="use"){ it.payload.existingCust=it.dup; it.state="waiting"; it.note=""; it.dupId=null; await kosObSave(it); kosObRender(); kosObRun(true); }
+  else if(act==="drop"){
+    if(KOS_OB.armed===id){ KOS_OB.armed=null; await kosObDrop(it); toast("Discarded"); }
+    else { KOS_OB.armed=id; kosObRender(); setTimeout(()=>{ if(KOS_OB.armed===id){ KOS_OB.armed=null; kosObRender(); } },5000); }
+  }
+});
+window.addEventListener("online",()=>setTimeout(()=>kosObRun(false),1500));
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") kosObRun(false); });
+setInterval(()=>{ if(KOS_OB.items.some(i=>i.state!=="needs")) kosObRun(false); },30000);
+window.addEventListener("offline",()=>kosObRender());
+
+/* insert a row that carries its own ID; if that ID is already there (an earlier attempt got through), use the row that exists */
+async function insertIdem(table,row){
+  const r=await db.from(table).insert(row).select().single();
+  if(r.error){
+    if(row.id && (r.error.code==="23505"||/duplicate key/i.test(r.error.message||""))){
+      const g=await db.from(table).select("*").eq("id",row.id).single();
+      if(!g.error && g.data) return g.data;
+    }
+    throw r.error;
+  }
+  return r.data;
+}
+
+/* ---------- LEADS: capture / commit ---------- */
+async function leadCommit(p){
+  let cust;
+  if(p.existingCust) cust=p.existingCust;
+  else{
+    if(p.fromOutbox){ /* sent later: re-check the person is not already on file (a lead may have been saved meanwhile) */
+      const dup=await findDuplicateCustomer(p.phone,p.last,p.addr,p.ids.cust);
+      if(dup){
+        const e=new Error("Already on file: "+((dup.first_name||"")+" "+(dup.last_name||"")).trim()+(dup.phone?" · "+dup.phone:"")+". Use the person on file, or discard this one.");
+        e.needs=true; e.dupId=dup.id; e.dup=dup; throw e;
+      }
+    }
+    cust=await createCustomerRow({id:p.ids.cust,first:p.first,last:p.last,phone:p.phone,email:p.email,street:p.addr,city:p.city,state:"NY",zip:null,lead_source:p.source});
+  }
+  const job=await insertIdem("jobs",{
+    id:p.ids.job,customer_id:cust.id,job_type:p.type,status:"Lead",
+    street_address:p.addr||null,city:p.city||null,state:"NY",
+    appointment:p.appt,temperature:p.temp,emergency:!!p.emg,
+    zone:p.zone,notes:p.note||null
+  });
+  return {job,cust};
 }
 
 /* ============ BUILD 7 (v8.5) — THE ROAD ============
@@ -4173,6 +4464,7 @@ function wireSchedRows(containerId, needs){
 let appBooted=false;
 function initApp(){
   if(appBooted) return; appBooted=true;
+  kosObLoad().then(()=>kosObRun(false)).catch(()=>{}); /* Build 11.1: anything saved offline earlier goes out now */
   renderTrades();
   renderBuilder();
   renderRates();
@@ -4215,9 +4507,11 @@ $("authPw").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefaul
 $("authEmail").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("authPw").focus(); } });
 
 $("signOutBtn").addEventListener("click",async ()=>{
+  const nOut=(typeof KOS_OB!=="undefined"?KOS_OB.items.length:0);
+  if(nOut && !confirm("⚠️ "+nOut+" saved item"+(nOut>1?"s haven't":" hasn't")+" been sent yet. Signing out DELETES "+(nOut>1?"them":"it")+" from this iPad.\n\nGo back, get signal, and let them send first.\n\nSign out anyway and lose them?")) return;
   if(!confirm("Sign out of KRECK OS on this device? You'll need your password to get back in.")) return;
   try{ await db.auth.signOut(); }catch(_){}
-  try{ await kosIdb.clear("reads"); await kosIdb.del("kv","draft"); }catch(_){}
+  try{ await kosIdb.clear("reads"); await kosIdb.clear("kv"); await kosIdb.clear("outbox"); }catch(_){}
   location.reload();
 });
 
