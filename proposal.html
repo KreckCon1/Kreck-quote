@@ -256,7 +256,7 @@
   <button id="barBtn">Review &amp; Sign</button>
 </div>
 
-<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4</div>
+<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.1</div>
 
 <script>
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
@@ -508,9 +508,23 @@ async function doSign(){
   }
   // success
   renderSignedBanner(data.signed_name, data.selected_option, data.selected_price, data.signed_at);
+  kickSignedCopy();
   $("signWrap").style.display = "none";
   $("bar").style.display = "none";
   window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* Build 12 (v4.1): ask the server to email the customer their signed-contract link. The server checks the link is really
+   signed, sends at most once, and only to the address Kreck already has. Never blocks or breaks the signing screen. */
+async function kickSignedCopy(){
+  try{
+    const r = await db.functions.invoke("dynamic-action", { body: { action: "signed_copy", token: token } });
+    const d = r && r.data;
+    if(d && d.ok && d.customer_emailed){
+      $("signedTop").insertAdjacentHTML("beforeend",
+        '<div class="signedBanner" style="margin-top:10px"><div class="dt">✉️ A copy of your signed contract is on its way to your email. You can also keep this page link — it always works.</div></div>');
+    }
+  }catch(_){}
 }
 
 (async () => {

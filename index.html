@@ -271,6 +271,10 @@
   /* Build 11 (v9.3.2) "Tailgate", stage 3: who did what. customers / jobs / quotes carry created_by and updated_by (the sign-in email,
      filled in by the database itself). Lead rows and quote rows show "· by Chris". Old rows stay blank. If the SQL has not been
      run, the read simply fails quietly and nothing shows — no screen depends on it. */
+  /* Build 12 (v9.4) "Your Copy": when a customer signs, the customer page asks the dynamic-action function to email them a link to their
+     signed contract (Resend, from ti@kreckcontracting.com; the signed link never expires). Signed quotes show who got it, with
+     Send signed copy / Text the link. Every job carries a QuickBooks Send / Keep out switch (jobs.qb_sync, default Send) that does
+     nothing until QuickBooks is connected in Build 15. All of it degrades quietly if the Build 12 SQL has not been run. */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -520,7 +524,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.3.2 — Tailgate</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.4 — Your Copy</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -1461,6 +1465,7 @@ function renderLeads(){
         <div class="dMeta">Source: ${cu.lead_source||"—"}${l.emergency?" · 🚨 EMERGENCY":""}${l.outcome==="Lost"?" · Lost"+(l.lost_reason?": "+esc(l.lost_reason):""):l.outcome==="Unknown"?" · Unknown — never heard back":""}</div>
         <div class="dMeta">Temp: ${["🟢","🟡","🔴"].map(t=>`<button class="chip ${tclr(l.temperature)===t?'sel':''}" data-settemp="${t}" data-sid="${l.id}">${t}</button>`).join("")}</div>
         <div class="dMeta">Tags: ${TAGS.map(t=>`<button class="chip ${(l.tags||[]).includes(t.e)?'sel':''}" data-tagtog="${t.e}" data-sid="${l.id}">${t.n}</button>`).join("")}</div>
+        ${qbRow(l.id)}
         ${l.notes?`<div class="dMeta">"${l.notes}"</div>`:""}
         <div class="actRow">
           ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">Add to Calendar</button>`:""}
@@ -3236,6 +3241,7 @@ function renderQuoteList(openId){
         ${contact?`<div class="dMeta">${contact}</div>`:""}
         ${costInfo?`<div class="dMeta">${costInfo}</div>`:""}
         ${phasing}${noWarranty}${signedLine}${custSel}${custCom}${voidedLine}
+        ${isSigned?scRow(q,cu):""}${qbRow(q.job_id)}
         ${phStrip}
         ${optBlocks}
         ${q.jobs?.outcome==="Lost"?`<div class="dMeta" style="color:#8c1f1f;font-weight:700">Lost${q.jobs.lost_reason?" — "+esc(q.jobs.lost_reason):""}</div>`:q.jobs?.outcome==="Unknown"?`<div class="dMeta" style="color:#6f6a61;font-weight:700">Unknown — never heard back</div>`:""}
@@ -4164,6 +4170,90 @@ async function leadCommit(p){
   return {job,cust};
 }
 
+/* ============ BUILD 12 (v9.4) — YOUR COPY ============ */
+const KOS_SC = {byQuote:{}, on:true, busy:false};   /* signed-copy info per quote */
+const KOS_QB = {jobs:{}, on:true, busy:false};      /* QuickBooks switch per job (true = send) */
+async function kosLoadCopyInfo(){
+  if(KOS_SC.busy) return; KOS_SC.busy=true;
+  try{
+    let {data,error}=await db.from("proposal_shares").select("quote_id,token,signed_at,copy_sent_at,copy_sent_to").not("signed_at","is",null).limit(3000);
+    if(error){ /* Build 12 SQL not run: still learn the links so Text the link works */
+      const r2=await db.from("proposal_shares").select("quote_id,token,signed_at").not("signed_at","is",null).limit(3000);
+      data=r2.data; if(r2.error) return;
+    }
+    let changed=false;
+    for(const r of (data||[])){
+      const o=KOS_SC.byQuote[r.quote_id];
+      if(!o||o.token!==r.token||o.sent_at!==r.copy_sent_at||o.sent_to!==r.copy_sent_to){ KOS_SC.byQuote[r.quote_id]={token:r.token,sent_at:r.copy_sent_at||null,sent_to:r.copy_sent_to||null,signed_at:r.signed_at}; changed=true; }
+    }
+    if(changed){ try{ renderQuoteList(openQuoteId); }catch(_){} }
+  }catch(_){} finally{ KOS_SC.busy=false; }
+}
+async function kosLoadFlags(){
+  if(!KOS_QB.on||KOS_QB.busy) return; KOS_QB.busy=true;
+  try{
+    const {data,error}=await db.from("jobs").select("id,qb_sync").limit(5000);
+    if(error){ if(/qb_sync|column|does not exist/i.test(String(error.message||""))) KOS_QB.on=false; return; }
+    let changed=false;
+    for(const r of (data||[])){ const v=r.qb_sync!==false; if(KOS_QB.jobs[r.id]!==v){ KOS_QB.jobs[r.id]=v; changed=true; } }
+    if(changed){ try{ renderLeads(); }catch(_){} try{ renderQuoteList(openQuoteId); }catch(_){} }
+  }catch(_){} finally{ KOS_QB.busy=false; }
+}
+function qbRow(jobId){
+  if(!KOS_QB.on||!jobId) return "";
+  const send=KOS_QB.jobs[jobId]!==false;
+  return `<div class="dMeta">QuickBooks: <button class="chip ${send?'sel':''}" data-qbtog="${jobId}" data-qbv="1" type="button">Send</button><button class="chip ${!send?'sel':''}" data-qbtog="${jobId}" data-qbv="0" type="button">Keep out</button> <span style="color:var(--muted);font-size:12px">takes effect when QuickBooks is connected</span></div>`;
+}
+function proposalLink(token){ return location.href.split("#")[0].split("?")[0].replace(/index\.html$/,"")+"proposal.html?t="+token; }
+function scRow(q,cu){
+  const o=KOS_SC.byQuote[q.id];
+  const email=(cu&&cu.email)||"", phone=((cu&&cu.phone)||"").replace(/[^0-9+]/g,"");
+  let line;
+  const to=o&&o.sent_to||"";
+  if(o&&o.sent_at&&to&&to!=="sending"&&to.indexOf("failed")!==0){
+    if(to==="office only") line="No customer email is on file, so nobody outside the office got a copy. Text them the link.";
+    else line="✉️ Signed copy emailed to <b>"+esc(to)+"</b> on "+new Date(o.sent_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})+".";
+  } else if(to.indexOf("failed")===0) line="⚠️ The signed-copy email didn't go out ("+esc(to.replace(/^failed:\s*/,""))+"). Tap Send signed copy to try again.";
+  else line="Signed copy not emailed yet.";
+  const btns=[];
+  if(email) btns.push(`<button class="copyBtn" data-scsend="${q.id}" type="button" style="background:var(--ok)">${o&&o.sent_at&&to&&to!=="office only"&&to.indexOf("failed")!==0?"Send again":"Send signed copy"}</button>`);
+  if(o&&o.token&&phone) btns.push(`<button class="copyBtn" data-sctext="${q.id}" type="button" style="background:var(--orange)">Text the link</button>`);
+  return `<div class="dMeta" style="border-top:1px dashed var(--line,#ddd);padding-top:8px">${line}${btns.length?`<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${btns.join("")}</div>`:""}</div>`;
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest&&e.target.closest("[data-scsend],[data-sctext],[data-qbtog]"); if(!b) return;
+  e.stopPropagation();
+  if(b.dataset.qbtog){
+    const id=b.dataset.qbtog, v=b.dataset.qbv==="1";
+    const {error}=await db.from("jobs").update({qb_sync:v}).eq("id",id);
+    if(error){ toast(navigator.onLine===false?"No signal — the QuickBooks switch wasn't changed":"Couldn't change it: "+error.message); return; }
+    KOS_QB.jobs[id]=v; try{ renderLeads(); }catch(_){} try{ renderQuoteList(openQuoteId); }catch(_){}
+    toast(v?"Will be sent to QuickBooks":"Kept out of QuickBooks"); return;
+  }
+  const qid=b.dataset.scsend||b.dataset.sctext;
+  const q=quotesCache.find(x=>x.id===qid); if(!q) return;
+  const cu=q.jobs&&q.jobs.customers;
+  if(b.dataset.sctext){
+    const o=KOS_SC.byQuote[qid]; if(!o||!o.token){ toast("Link not loaded yet — try again"); return; }
+    const link=proposalLink(o.token), phone=((cu&&cu.phone)||"").replace(/[^0-9+]/g,"");
+    const body="Hi "+((cu&&cu.first_name)||"")+", here is your signed contract from Kreck Contracting. You can keep this link — it always works: "+link;
+    try{ await navigator.clipboard.writeText(link); }catch(_){}
+    if(phone){ toast("Opening Messages — just hit send"); location.href="sms:"+phone+"&body="+encodeURIComponent(body); } else toast("No phone on file — link copied");
+    return;
+  }
+  b.disabled=true; const old=b.textContent; b.textContent="Sending…";
+  try{
+    const {data,error}=await db.functions.invoke("dynamic-action",{body:{action:"signed_copy_send",quote_id:qid}});
+    if(error||!data||!data.ok){ toast((data&&data.error)||(navigator.onLine===false?"No signal — try again with signal":"Couldn't send: "+((error&&error.message)||"unknown"))); }
+    else{
+      toast(data.customer_emailed?"Signed copy emailed to "+data.sent_to:"No customer email on file — the office got the note. Text them the link");
+      const o=KOS_SC.byQuote[qid]||{}; o.sent_at=new Date().toISOString(); o.sent_to=data.sent_to; KOS_SC.byQuote[qid]=o;
+    }
+  }catch(err){ toast("Couldn't send: "+(err.message||"no signal")); }
+  b.disabled=false; b.textContent=old; try{ renderQuoteList(openQuoteId); }catch(_){}
+  kosLoadCopyInfo();
+});
+
 /* ============ BUILD 11 (v9.3.2) — who did what ============ */
 const KOS_BY = {jobs:{}, quotes:{}, on:true, busy:false};
 function byName(email){
@@ -4194,8 +4284,8 @@ async function kosLoadCreators(){
 }
 (function(){
   const ll=loadLeads, lq=loadQuotes;
-  loadLeads=async function(){ const r=await ll.apply(this,arguments); kosLoadCreators(); return r; };
-  loadQuotes=async function(){ const r=await lq.apply(this,arguments); kosLoadCreators(); return r; };
+  loadLeads=async function(){ const r=await ll.apply(this,arguments); kosLoadCreators(); kosLoadFlags(); return r; };
+  loadQuotes=async function(){ const r=await lq.apply(this,arguments); kosLoadCreators(); kosLoadFlags(); kosLoadCopyInfo(); return r; };
 })();
 
 /* ============ BUILD 7 (v8.5) — THE ROAD ============
