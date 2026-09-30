@@ -27,6 +27,12 @@
   header .brand{font-size:20px;font-weight:800;letter-spacing:.06em}
   header .brand span{color:var(--orange)}
   header .sub{font-size:12px;color:#b7b0a4;letter-spacing:.14em;text-transform:uppercase}
+  #offBanner{background:#fff3d6;color:#5d4200;border-bottom:1.5px solid #e6c56c;padding:9px 16px;font-size:13.5px;line-height:1.35}
+  #offBanner b{font-weight:800}
+  #draftBar{background:#eef4ff;border-bottom:1.5px solid #b6c9ee;padding:10px 16px;font-size:14px}
+  #draftBar .dbRow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  #draftBar button{border:1.5px solid #1d4ed8;background:#fff;color:#1d4ed8;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;touch-action:manipulation}
+  #draftBar button.go{background:#1d4ed8;color:#fff}
   #connDot{margin-left:auto;font-size:12px;color:#b7b0a4;display:flex;align-items:center;gap:6px}
   #connDot::before{content:"";width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
   #connDot.on::before{background:var(--ok)}
@@ -247,6 +253,9 @@
      (jobs.companycam_project_id / _name); picked photos are COPIED into the quote-photos bucket by the companycam Edge Function
      (the CompanyCam token lives only in a Supabase secret, never in this file)
      v9.2.1: copies arrive as full-size originals (temp raw- files) and are shrunk to 1600px on the device, same as iPad photos */
+  /* Build 11 (v9.3) "Tailgate", stage 1: opens with no signal (service worker sw.js keeps the app page; IndexedDB keeps the last-seen data);
+     unfinished quote kept as a draft and offered back; quote numbers handed out by the database (quote_number_seq, Q-YYYY-2500 and up).
+     Saving with no signal is refused with a plain message until the outbox lands in v9.3.1 */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -496,10 +505,12 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.2.1 — Camera Roll</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.3 — Tailgate</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
+<div id="offBanner" style="display:none"></div>
+<div id="draftBar" style="display:none"></div>
 <nav>
   <button class="active" data-s="leads">Leads</button>
   <button data-s="sched"><span class="full">Schedule</span><span class="short">Sched</span></button>
@@ -721,7 +732,149 @@ window.addEventListener("error", e=>{ try{ toast("⚠️ Error: "+e.message); }c
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠️ Error: "+(e.reason&&e.reason.message||e.reason)); }catch(_){} });
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
 const SB_KEY = "sb_publishable_pxjQJVlvNgBqojzuNcvH5A_wUGT3VwZ";
-const db = supabase.createClient(SB_URL, SB_KEY);
+/* ============ BUILD 11 (v9.3) — TAILGATE: offline foundation ============
+   1) kosIdb   : small key-value store on the iPad (IndexedDB) for the read copy, the draft, and (v9.3.1) the outbox
+   2) kosFetch : sits under the database client. Every READ is remembered; when there is no signal the
+                 remembered copy is served instead. Nothing is ever written to the server from here.
+   3) offline boot: with a saved sign-in and no signal, the app opens on the remembered data */
+const KOS = {offline:false, servedAt:0, forceOffline:false, custMode:"search", custSrc:""};
+const kosIdb = (function(){
+  let p=null;
+  function open(){
+    if(p) return p;
+    p=new Promise((res,rej)=>{
+      if(!window.indexedDB){ rej(new Error("no indexedDB")); return; }
+      const r=indexedDB.open("kreck-os",1);
+      r.onupgradeneeded=()=>{ const d=r.result; ["reads","kv","outbox"].forEach(s=>{ if(!d.objectStoreNames.contains(s)) d.createObjectStore(s); }); };
+      r.onsuccess=()=>res(r.result);
+      r.onerror=()=>rej(r.error||new Error("indexedDB open failed"));
+    });
+    p.catch(()=>{ p=null; });
+    return p;
+  }
+  async function run(store,mode,fn){
+    const d=await open();
+    return new Promise((res,rej)=>{
+      let req;
+      const t=d.transaction(store,mode);
+      try{ req=fn(t.objectStore(store)); }catch(e){ rej(e); return; }
+      t.oncomplete=()=>res(req&&req.result!==undefined?req.result:undefined);
+      t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
+    });
+  }
+  return {
+    get:(s,k)=>run(s,"readonly",st=>st.get(k)),
+    put:(s,k,v)=>run(s,"readwrite",st=>{ st.put(v,k); }),
+    del:(s,k)=>run(s,"readwrite",st=>{ st.delete(k); }),
+    clear:(s)=>run(s,"readwrite",st=>{ st.clear(); }),
+    prune:(s,olderThanMs)=>open().then(d=>new Promise(res=>{
+      const t=d.transaction(s,"readwrite"), st=t.objectStore(s), cut=Date.now()-olderThanMs;
+      const c=st.openCursor();
+      c.onsuccess=()=>{ const cur=c.result; if(!cur) return; if(cur.value&&cur.value.at&&cur.value.at<cut) cur.delete(); cur.continue(); };
+      t.oncomplete=()=>res(); t.onerror=()=>res(); t.onabort=()=>res();
+    })).catch(()=>{})
+  };
+})();
+const kosTime = ms => { try{ return new Date(ms).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }catch(_){ return ""; } };
+function kosStatus(){
+  const dot=document.getElementById("connDot"), bn=document.getElementById("offBanner");
+  if(dot){ if(KOS.offline){ dot.className="err"; dot.textContent="offline"+(KOS.servedAt?" · data as of "+kosTime(KOS.servedAt):""); } else { dot.className="on"; dot.textContent="connected"; } }
+  if(bn){
+    if(KOS.offline){
+      bn.style.display="";
+      bn.innerHTML="<b>No signal.</b> You can look things up"+(KOS.servedAt?" (saved as of "+kosTime(KOS.servedAt)+")":"")+" and build a quote. Saving needs signal, so your quote is kept as a draft on this iPad until then.";
+    } else bn.style.display="none";
+  }
+}
+function kosGoOffline(at){ KOS.offline=true; KOS.forceOffline=true; if(at) KOS.servedAt=at; kosStatus(); kosStartProbe(); }
+let kosProbeT=null;
+function kosStartProbe(){
+  if(kosProbeT) return;
+  kosProbeT=setInterval(async ()=>{
+    if(navigator.onLine===false) return;
+    try{
+      const c=new AbortController(); const t=setTimeout(()=>c.abort(),4000);
+      const r=await fetch(SB_URL+"/auth/v1/health",{headers:{apikey:SB_KEY},signal:c.signal}); clearTimeout(t);
+      if(r){ kosBackOnline(); }
+    }catch(_){}
+  },15000);
+}
+function kosBackOnline(){
+  if(kosProbeT){ clearInterval(kosProbeT); kosProbeT=null; }
+  const was=KOS.offline; KOS.offline=false; KOS.forceOffline=false; kosStatus();
+  if(was){ try{ toast("Back online"); if(typeof appBooted!=="undefined"&&appBooted){ loadLeads(); loadQuotes(); loadSchedule(); } }catch(_){} }
+}
+window.addEventListener("online",()=>{ if(KOS.offline) kosBackOnline(); });
+window.addEventListener("offline",()=>{ KOS.offline=true; KOS.forceOffline=true; kosStatus(); });
+
+const KOS_MAX_BODY = 3*1024*1024;
+async function kosFetch(input, init){
+  const url = typeof input==="string" ? input : (input&&input.url)||String(input);
+  const method = ((init&&init.method)||(typeof input!=="string"&&input&&input.method)||"GET").toUpperCase();
+  const isRest = url.indexOf(SB_URL+"/rest/v1/")===0;
+  const isStore = url.indexOf(SB_URL+"/storage/v1/")===0;
+  if((isRest||isStore) && method!=="GET" && method!=="HEAD"){
+    if(navigator.onLine===false) throw new TypeError("No signal — this needs a connection");
+    return fetch(input, init);
+  }
+  if(!(isRest && (method==="GET"||method==="HEAD"))) return fetch(input, init);
+  const key = method+" "+url;
+  async function fromCache(origErr){
+    let rec=null;
+    try{ rec=await kosIdb.get("reads",key); }catch(_){}
+    if(!rec) throw origErr;
+    kosGoOffline(rec.at);
+    const nb = (rec.status===204||rec.status===205||rec.status===304||method==="HEAD") ? null : rec.body;
+    return new Response(nb, {status:rec.status, headers:rec.headers||{}});
+  }
+  if(navigator.onLine===false || KOS.forceOffline){
+    return fromCache(new TypeError("No signal and nothing saved for this yet"));
+  }
+  let ctrl=null, timer=null, opts=init||{};
+  if(!opts.signal){ ctrl=new AbortController(); timer=setTimeout(()=>ctrl.abort(),8000); opts={...opts, signal:ctrl.signal}; }
+  let resp;
+  try{ resp=await fetch(input, opts); }
+  catch(err){ if(timer) clearTimeout(timer); return fromCache(err); }
+  if(timer) clearTimeout(timer);
+  if(resp.status>=500){ try{ return await fromCache(new TypeError("server unavailable")); }catch(_){ return resp; } }
+  if(resp.ok){
+    if(KOS.offline){ kosBackOnline(); }
+    const cl=resp.clone();
+    cl.text().then(body=>{
+      if(body.length>KOS_MAX_BODY) return;
+      kosIdb.put("reads",key,{at:Date.now(),status:resp.status,body:method==="HEAD"?"":body,
+        headers:{"content-type":resp.headers.get("content-type")||"application/json","content-range":resp.headers.get("content-range")||""}}).catch(()=>{});
+    }).catch(()=>{});
+  }
+  return resp;
+}
+const db = supabase.createClient(SB_URL, SB_KEY, {global:{fetch:kosFetch}});
+/* Offline, the database client would spend ~25 seconds retrying a sign-in refresh before every request.
+   While we know there is no signal, hand it the saved sign-in straight away instead. */
+(function(){
+  const orig=db.auth.getSession.bind(db.auth);
+  db.auth.getSession=async function(){
+    if(navigator.onLine===false || KOS.forceOffline){ const s=kosStoredSession(); return {data:{session:s||null},error:null}; }
+    return orig();
+  };
+})();
+function kosStoredSession(){
+  try{
+    const ref=new URL(SB_URL).hostname.split(".")[0];
+    const raw=localStorage.getItem("sb-"+ref+"-auth-token");
+    const s=raw?JSON.parse(raw):null;
+    return (s&&(s.access_token||s.user))?s:null;
+  }catch(_){ return null; }
+}
+async function kosCanRunOffline(){
+  if(!kosStoredSession()) return false;
+  if(navigator.onLine===false) return true;
+  try{
+    const c=new AbortController(); const t=setTimeout(()=>c.abort(),4000);
+    await fetch(SB_URL+"/auth/v1/health",{headers:{apikey:SB_KEY},signal:c.signal}); clearTimeout(t);
+    return false;
+  }catch(_){ return true; }
+}
 
 const $ = id => document.getElementById(id);
 const fmt = n => "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1100,6 +1253,7 @@ $("saveLead").addEventListener("click", async ()=>{
   if(!first && !last){ toast("Enter at least a name"); return; }
   if(!leadUseExisting && !leadFormReady()){ toast("Add a phone number or a street address first"); updateLeadSaveState(); return; }
   if(!leadUseExisting && !lSrcSel){ toast("Tap a lead source — it feeds the Sources report later"); return; }
+  if(navigator.onLine===false){ toast("No signal — this lead is NOT saved yet. Keep this form open, or write it down."); $("leadMsg").textContent="No signal — lead not saved yet. Saving with no signal comes in the next update."; return; }
   const btn=$("saveLead"); btn.disabled=true; btn.textContent="Saving…";
   try{
     let cust;
@@ -2504,6 +2658,11 @@ async function saveQuote(){
   if(!filled.length){ toast("Add at least one line"); return; }
   const unnamed=filled.flatMap(o=>o.lines).find(l=>l.isCustom && !l.matHandling && !l.name.trim());
   if(unnamed){ toast("Describe your custom charge before saving"); return; }
+  if(navigator.onLine===false){ /* Build 11: no signal — nothing is sent, the quote is kept as a draft on this iPad */
+    kosDraftPending=false; kosDraftLast=""; kosDraftSave();
+    $("saveMsg").textContent="No signal — not saved yet. Your quote is kept as a draft on this iPad; open New Quote when you have signal and tap Save.";
+    toast("No signal — kept as a draft on this iPad"); return;
+  }
   const btn=$("tapeSave"); btn.disabled=true; btn.textContent="Saving…";
   try{
     let cust;
@@ -2582,12 +2741,9 @@ async function saveQuote(){
       const {error:eCc}=await db.from("jobs").update({companycam_project_id:builderCc.id,companycam_project_name:builderCc.name}).eq("id",job.id);
       if(eCc) console.error("companycam tie not saved",eCc);
     }
-    let qNum;
-    if(editingQuote){ qNum=editingQuote.number; } /* Build 5: same number forever */
-    else {
-      const {count} = await db.from("quotes").select("*",{count:"exact",head:true});
-      qNum = "Q-"+new Date().getFullYear()+"-"+String((count||0)+1).padStart(3,"0");
-    }
+    /* Build 5: an edited quote keeps its number forever. Build 11: a NEW quote's number is handed out by the
+       database at the moment it is saved (Q-2026-2500 and up), so two saves can never collide. */
+    let qNum = editingQuote ? editingQuote.number : null;
     const optTotals=filled.map(o=>({label:o.label,tier:o.tier,
       price:o.lines.reduce((s,l)=>s+l.qty*l.price,0),
       cost:o.lines.reduce((s,l)=>s+l.qty*(((l.L||0)+(l.M||0)+(l.O||0))),0)}));
@@ -2637,16 +2793,22 @@ async function saveQuote(){
          pre-generated at first photo — the row is created WITH that ID so the
          already-uploaded photos are on their final storage path. No photos =
          DB generates the ID exactly as before. */
-      const {data,error:e3} = await db.from("quotes").insert({
+      const newQuoteRow={
         ...(pendingQuoteId?{id:pendingQuoteId}:{}),
         ...(builderPhotos.length?{photos:builderPhotos}:{}),
-        job_id:job.id,quote_number:qNum,title:jobType+" Quote",
+        job_id:job.id,title:jobType+" Quote",
         tier:filled[0].tier||"Standard",status:"Draft",markup_pct:0,
         notes:notes,
         valid_until:new Date(Date.now()+30*864e5).toISOString().slice(0,10)
-      }).select().single();
-      if(e3) throw e3;
-      quote=data;
+      };
+      let ins = await db.from("quotes").insert(newQuoteRow).select().single();
+      if(ins.error && /quote_number/i.test(ins.error.message||"")){
+        /* the number-counter SQL has not been run yet — fall back to the old counting so saving never breaks */
+        const {count} = await db.from("quotes").select("*",{count:"exact",head:true});
+        ins = await db.from("quotes").insert({...newQuoteRow,quote_number:"Q-"+new Date().getFullYear()+"-"+String((count||0)+1).padStart(3,"0")}).select().single();
+      }
+      if(ins.error) throw ins.error;
+      quote=ins.data; qNum=quote.quote_number;
     }
     const rows = filled.flatMap((o,oi)=>o.lines.map((l,i)=>({
       quote_id:quote.id,sort_order:oi*100+i,
@@ -2668,7 +2830,7 @@ async function saveQuote(){
       $("saveMsg").innerHTML="Saved as "+esc(qNum)+" ("+esc(jobType)+(filled.length>1?" · "+filled.length+" options":"")+") — "+
         optTotals.map(o=>esc(o.label)+" "+fmt0(o.price)).join(" · ")+"."+shareNowButton(quote.id);
     }
-    editingQuote=null; pendingLead=null; renderLeadBanner();
+    editingQuote=null; pendingLead=null; renderLeadBanner(); kosDraftClear(); /* Build 11: saved for real — the draft is done */
     resetOptions(); phases=[]; renderLines();
     document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
     ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput","cSourceDetail","custSearch"].forEach(id=>{ if($(id)) $(id).value=""; });
@@ -2679,7 +2841,11 @@ async function saveQuote(){
     (TRADES[currentTrade].selects||[]).forEach(s=>{ if($(s.id)) $(s.id).value=0; });
   }catch(err){
     console.error(err);
-    $("saveMsg").textContent="Save failed: "+(err.message||"unknown error")+". Check connection and retry.";
+    const netDown=/failed to fetch|no signal|network|load failed|AbortError/i.test(String(err&&err.message||err));
+    if(netDown){ kosDraftPending=false; kosDraftLast=""; kosDraftSave(); }
+    $("saveMsg").textContent = netDown
+      ? "Lost signal while saving — part of it may have saved. Your quote is kept as a draft on this iPad; check Leads and Quotes before saving again."
+      : "Save failed: "+(err.message||"unknown error")+". Check connection and retry.";
   }
   btn.disabled=false; btn.textContent="Save";
 }
@@ -3318,6 +3484,7 @@ function setCustMode(mode, srcText){
   const pick=$("custPickWrap"), bar=$("custPickedBar"), fields=$("custFields"),
         srcW=$("srcWrap"), srcL=$("srcLocked");
   if(!pick||!bar||!fields) return;
+  KOS.custMode=mode; KOS.custSrc=srcText||""; /* Build 11: remembered for draft recovery */
   /* Build 8: nothing below the customer card until a person is picked */
   $("qBody").classList.toggle("gated", mode==="search");
   if(mode==="search"){
@@ -3613,6 +3780,95 @@ async function ccAddPicked(){
   ccBusy=false; ccDrawGrid();
 }
 $("ccBtn").addEventListener("click",ccOpen);
+
+/* ============ BUILD 11 (v9.3) — DRAFT RECOVERY ============
+   While you build a quote the app quietly keeps a copy of your place on this iPad (every line, the customer,
+   photos already added). Close the app or lose power and New Quote offers to pick it up. One draft per iPad.
+   It is removed the moment the quote saves, or when you tap Discard. */
+let kosDraftPending=true, kosDraftLast="", kosDraftT=null; /* pending stays true until we have looked for an old draft */
+const DRAFT_FIELDS=["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cState","cZip","cSize","cSizeUnit","cSourceDetail","sizeInput","lfInput"];
+function kosDraftCapture(){
+  try{ syncActiveOption(); }catch(_){}
+  if(!options.some(o=>o.lines&&o.lines.length)) return null;
+  const T=TRADES[currentTrade]||{}, toggles={}, selects={}, f={};
+  (T.toggles||[]).forEach(tg=>{ const el=$(tg.id); if(el) toggles[tg.id]=el.checked; });
+  (T.selects||[]).forEach(s=>{ const el=$(s.id); if(el) selects[s.id]=el.value; });
+  DRAFT_FIELDS.forEach(id=>{ const el=$(id); if(el) f[id]=el.value; });
+  return {v:1, trade:currentTrade, tier:currentTier, activeOpt:activeOpt, options:options, phases:phases,
+    toggles:toggles, selects:selects, f:f, custMode:KOS.custMode, custSrc:KOS.custSrc,
+    pickedCustomer:pickedCustomer, pendingLead:pendingLead, editingQuote:editingQuote, cSrcSel:cSrcSel,
+    builderMood:builderMood, builderPhotos:builderPhotos, pendingQuoteId:pendingQuoteId, builderCc:builderCc};
+}
+function kosDraftSave(){
+  if(kosDraftPending) return; /* an older draft is waiting for Resume or Discard; never overwrite it */
+  let d; try{ d=kosDraftCapture(); }catch(_){ return; }
+  if(!d){ if(kosDraftLast){ kosDraftLast=""; kosIdb.del("kv","draft").catch(()=>{}); } return; }
+  let s; try{ s=JSON.stringify(d); }catch(_){ return; }
+  if(s===kosDraftLast) return;
+  kosDraftLast=s; d.at=Date.now();
+  kosIdb.put("kv","draft",d).catch(()=>{});
+}
+function kosDraftSoon(){ clearTimeout(kosDraftT); kosDraftT=setTimeout(kosDraftSave,2500); }
+function kosDraftClear(){
+  kosDraftLast=""; kosDraftPending=false; clearTimeout(kosDraftT);
+  const b=$("draftBar"); if(b) b.style.display="none";
+  kosIdb.del("kv","draft").catch(()=>{});
+}
+["input","change","click"].forEach(ev=>{ const s=$("s-new"); if(s) s.addEventListener(ev,kosDraftSoon,true); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") kosDraftSave(); });
+window.addEventListener("pagehide",kosDraftSave);
+setInterval(kosDraftSave,10000);
+
+async function kosDraftOffer(){
+  let d=null; try{ d=await kosIdb.get("kv","draft"); }catch(_){}
+  if(!d||!d.options||!d.options.length){ kosDraftPending=false; return; }
+  if(Date.now()-(d.at||0)>30*864e5){ kosDraftPending=false; kosIdb.del("kv","draft").catch(()=>{}); return; }
+  kosDraftPending=true;
+  const who=[(d.f&&d.f.cFirst)||"",(d.f&&d.f.cLast)||""].join(" ").trim()||"a customer";
+  const n=d.options.reduce((s,o)=>s+((o.lines||[]).length),0);
+  const dt=new Date(d.at||Date.now()), today=new Date().toDateString()===dt.toDateString();
+  const when=today?kosTime(dt.getTime()):dt.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" "+kosTime(dt.getTime());
+  const bar=$("draftBar");
+  bar.innerHTML='<b>Pick up where you left off?</b><div style="margin-top:2px">Unfinished quote for '+esc(who)+' — '+esc(d.trade||"")+', '+n+' line'+(n===1?"":"s")+', saved '+esc(when)+'.</div>'+
+    '<div class="dbRow"><button type="button" class="go" id="draftResume">Resume</button><button type="button" id="draftDiscard">Discard</button></div>';
+  bar.style.display="";
+  $("draftResume").addEventListener("click",()=>kosDraftRestore(d));
+  let armed=false;
+  $("draftDiscard").addEventListener("click",()=>{
+    if(!armed){ armed=true; $("draftDiscard").textContent="Tap again to discard"; return; }
+    kosDraftClear(); toast("Draft discarded");
+  });
+  toast("You have an unfinished quote — tap Resume at the top");
+}
+function kosDraftRestore(d){
+  try{
+    currentTrade=TRADES[d.trade]?d.trade:"Custom";
+    options=d.options; activeOpt=Math.max(0,Math.min(d.activeOpt||0,options.length-1)); lines=options[activeOpt].lines;
+    currentTier=d.tier||null; phases=d.phases||[];
+    pendingLead=d.pendingLead||null; editingQuote=d.editingQuote||null; pickedCustomer=d.pickedCustomer||null;
+    builderMood=d.builderMood||""; builderPhotos=d.builderPhotos||[]; pendingQuoteId=d.pendingQuoteId||null;
+    ccReset(); if(d.builderCc) builderCc=d.builderCc;
+    renderTrades(); renderBuilder(); renderPhasing(); renderOptChips(); renderLines();
+    document.querySelectorAll(".tierBtn").forEach(x=>x.classList.toggle("sel", x.dataset.key===currentTier));
+    Object.keys(d.f||{}).forEach(id=>{ const el=$(id); if(el) el.value=d.f[id]; });
+    const T=TRADES[currentTrade]||{};
+    (T.toggles||[]).forEach(tg=>{ const el=$(tg.id); if(el && d.toggles && tg.id in d.toggles) el.checked=d.toggles[tg.id]; });
+    (T.selects||[]).forEach(s=>{ const el=$(s.id); if(el && d.selects && s.id in d.selects) el.value=d.selects[s.id]; });
+    cSrcSel=d.cSrcSel||null; drawSrcChips();
+    setCustMode(d.custMode && d.custMode!=="search" ? d.custMode : "locked", d.custSrc);
+    renderLeadBanner(); renderBPhotos(); renderLines();
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+    document.querySelector('nav button[data-s="new"]').classList.add("active");
+    document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+    $("s-new").classList.add("active");
+    window.scrollTo(0,0);
+    kosDraftLast=""; kosDraftPending=false; $("draftBar").style.display="none";
+    toast("Picked up where you left off");
+  }catch(err){
+    console.error(err);
+    toast("Could not restore that draft: "+(err.message||"unknown")+" — it is still saved");
+  }
+}
 
 /* ============ BUILD 7 (v8.5) — THE ROAD ============
    Zones (D1 locked July 13) + Schedule screen + piggyback nudge + reminder.
@@ -3926,13 +4182,15 @@ function initApp(){
   loadLeads();
   /* Build 7: learned towns + schedule cache + who's signed in (reminder sign-off) */
   (async ()=>{ await loadTownZones(); loadSchedule(); })();
-  db.auth.getSession().then(({data})=>{ currentUserEmail=(data&&data.session&&data.session.user&&data.session.user.email)||""; }).catch(()=>{});
+  { const ss=kosStoredSession(); currentUserEmail=(ss&&ss.user&&ss.user.email)||""; }
+  db.auth.getSession().then(({data})=>{ const e=(data&&data.session&&data.session.user&&data.session.user.email)||""; if(e) currentUserEmail=e; }).catch(()=>{});
   (async ()=>{
     const {error} = await db.from("quotes").select("id",{head:true,count:"exact"});
     const dot=$("connDot");
-    if(error){ dot.className="err"; dot.textContent="offline"; }
-    else { dot.className="on"; dot.textContent="connected"; }
+    if(error && !KOS.offline){ dot.className="err"; dot.textContent="offline"; }
+    else kosStatus();
   })();
+  kosDraftOffer(); /* Build 11: unfinished quote from last time? */
 }
 function showGate(){ $("authGate").style.display="flex"; const dot=$("connDot"); dot.className=""; dot.textContent="signed out"; }
 function hideGate(){ $("authGate").style.display="none"; }
@@ -3959,18 +4217,33 @@ $("authEmail").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDef
 $("signOutBtn").addEventListener("click",async ()=>{
   if(!confirm("Sign out of KRECK OS on this device? You'll need your password to get back in.")) return;
   try{ await db.auth.signOut(); }catch(_){}
+  try{ await kosIdb.clear("reads"); await kosIdb.del("kv","draft"); }catch(_){}
   location.reload();
 });
 
 (async ()=>{
+  /* Build 11: with a saved sign-in and no signal, open on the remembered data instead of the sign-in screen */
+  async function bootOffline(){ kosGoOffline(0); hideGate(); initApp(); }
   try{
-    const {data:{session}} = await db.auth.getSession();
-    if(session){ hideGate(); initApp(); }
-    else showGate();
-  }catch(_){ showGate(); }
+    if(navigator.onLine===false && kosStoredSession()){ await bootOffline(); }
+    else{
+      const slow=new Promise(r=>setTimeout(()=>r("slow"),6000));
+      const got=await Promise.race([db.auth.getSession(),slow]);
+      if(got==="slow"){ if(await kosCanRunOffline()) await bootOffline(); else showGate(); }
+      else if(got&&got.data&&got.data.session){ hideGate(); initApp(); }
+      else if(await kosCanRunOffline()){ await bootOffline(); }
+      else showGate();
+    }
+  }catch(_){ if(await kosCanRunOffline()) await bootOffline(); else showGate(); }
   db.auth.onAuthStateChange((ev)=>{ if(ev==="SIGNED_OUT") showGate(); });
 })();
 
+/* Build 11: let the app open with no signal (stored copy of the page + library), keep the iPad from clearing our data */
+try{
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  setTimeout(()=>{ kosIdb.prune("reads",45*864e5); },8000);
+}catch(_){}
 try{ $("verSub").textContent += " ✓ JS running"; }catch(_){}
 </script>
 </body>
