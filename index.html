@@ -268,6 +268,9 @@
      on the iPad (IndexedDB "outbox") and sent by themselves when signal returns. Every send is safe to repeat: the app makes the
      customer / job / quote IDs itself, so a repeat can never double-create. Anything that needs a human (duplicate person,
      quote signed meanwhile) is held under "Needs you" and never sent blind. */
+  /* Build 11 (v9.3.2) "Tailgate", stage 3: who did what. customers / jobs / quotes carry created_by and updated_by (the sign-in email,
+     filled in by the database itself). Lead rows and quote rows show "· by Chris". Old rows stay blank. If the SQL has not been
+     run, the read simply fails quietly and nothing shows — no screen depends on it. */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -517,7 +520,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.3.1 — Tailgate</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.3.2 — Tailgate</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -1476,7 +1479,7 @@ function renderLeads(){
       : lq ? `<button class="qs" data-jumpq="${lq.id}" type="button">${esc(lq.quote_number)} · ${esc(lq.status)}</button>` : "";
     return `<div class="leadRow ${l.emergency?'emg':''}" data-lead="${l.id}">
       <div style="min-width:0"><div class="who">${l.emergency?"🚨 ":""}${who}${l.status==="Lost"?`<span class="outcomeTag lost">LOST</span>`:l.status==="Unknown"?`<span class="outcomeTag unknown">UNKNOWN</span>`:""}</div>
-      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+tagNames(l.tags):""}</div></div>
+      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+tagNames(l.tags):""}${byTag("jobs",l.id)}</div></div>
       <div class="rowActs">${rowAct}<div class="temp" data-tcyc="${l.id}" title="Tap to change">${tclr(l.temperature)}</div></div>
     </div>${detail}`;
   }).join("");
@@ -3257,7 +3260,7 @@ function renderQuoteList(openId){
     }
     return `<div class="qRow" data-open="${q.id}">
       <div><div class="who">${tclr(q.jobs?.temperature)} ${who}</div>
-      <div class="meta">${q.quote_number} · ${d}${trade?" · "+trade:""}${q.jobs?.city?" · "+q.jobs.city:""}${(q.jobs?.tags&&q.jobs.tags.length)?" · "+tagNames(q.jobs.tags):""}</div></div>
+      <div class="meta">${q.quote_number} · ${d}${trade?" · "+trade:""}${q.jobs?.city?" · "+q.jobs.city:""}${(q.jobs?.tags&&q.jobs.tags.length)?" · "+tagNames(q.jobs.tags):""}${byTag("quotes",q.id)}</div></div>
       <div style="text-align:right"><div class="amt">${priceStr}</div>
       ${tierBadge}<span class="badge ${q.status}">${q.status}</span></div>
     </div>${detail}`;
@@ -4160,6 +4163,40 @@ async function leadCommit(p){
   });
   return {job,cust};
 }
+
+/* ============ BUILD 11 (v9.3.2) — who did what ============ */
+const KOS_BY = {jobs:{}, quotes:{}, on:true, busy:false};
+function byName(email){
+  const n=String(email||"").split("@")[0].replace(/[._-]+/g," ").trim();
+  return n.replace(/\b\w/g,c=>c.toUpperCase());
+}
+function byTag(tb,id){
+  const r=KOS_BY[tb]&&KOS_BY[tb][id]; if(!r||!r.c) return "";
+  let t=" · by "+esc(byName(r.c));
+  if(r.u && r.u!==r.c) t+=" · edited by "+esc(byName(r.u));
+  return t;
+}
+async function kosLoadCreators(){
+  if(!KOS_BY.on || KOS_BY.busy) return;
+  KOS_BY.busy=true;
+  try{
+    let changed=false;
+    for(const tb of ["jobs","quotes"]){
+      const {data,error}=await db.from(tb).select("id,created_by,updated_by").not("created_by","is",null).limit(3000);
+      if(error){ if(/created_by|column|does not exist/i.test(String(error.message||""))) KOS_BY.on=false; return; } /* SQL not run yet — stay quiet */
+      for(const r of (data||[])){
+        const o=KOS_BY[tb][r.id];
+        if(!o||o.c!==r.created_by||o.u!==r.updated_by){ KOS_BY[tb][r.id]={c:r.created_by,u:r.updated_by}; changed=true; }
+      }
+    }
+    if(changed){ try{ renderLeads(); }catch(_){} try{ renderQuoteList(openQuoteId); }catch(_){} }
+  }catch(_){} finally{ KOS_BY.busy=false; }
+}
+(function(){
+  const ll=loadLeads, lq=loadQuotes;
+  loadLeads=async function(){ const r=await ll.apply(this,arguments); kosLoadCreators(); return r; };
+  loadQuotes=async function(){ const r=await lq.apply(this,arguments); kosLoadCreators(); return r; };
+})();
 
 /* ============ BUILD 7 (v8.5) — THE ROAD ============
    Zones (D1 locked July 13) + Schedule screen + piggyback nudge + reminder.
