@@ -34,6 +34,40 @@
   #gearBtn{background:none;border:1px solid #3a352e;color:#b7b0a4;border-radius:8px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;align-self:center;margin-left:6px}
   #gearBtn.active{color:#fff;border-color:var(--orange)}
   .gated{display:none}
+  nav button .short{display:none}
+  @media (max-width:520px){nav button{font-size:13px;padding:13px 2px}nav button .full{display:none}nav button .short{display:inline}}
+  /* Build 9: Board */
+  .bdBar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .bdBar .chip{padding:8px 13px;font-size:13px}
+  .bdSrcBanner{background:#fff3e8;border:1.5px solid var(--orange);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13.5px;margin-bottom:12px;cursor:pointer;display:none}
+  .bdCols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:16px}
+  @media (max-width:760px){.bdCols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .bdCol{border-top:4px solid var(--line);border-radius:8px;background:var(--card);padding:10px;min-width:0}
+  .bdCol h4{margin:0 0 2px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .bdCol .n{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .bdCol .d{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .bdCol.lead{border-top-color:#1a56b0}.bdCol.quoted{border-top-color:#b06f1a}.bdCol.won{border-top-color:var(--ok)}.bdCol.lost{border-top-color:#8c1f1f}.bdCol.unknown{border-top-color:#6f6a61}
+  .bdCard{background:#fff;border:1px solid var(--line);border-radius:7px;padding:8px 9px;font-size:12px;margin-bottom:6px;line-height:1.35;cursor:pointer;min-height:44px}
+  .bdCard b{display:block;font-size:13px}
+  .bdCard .m{color:var(--muted)}
+  .bdMore{font-size:12px;color:var(--orange);font-weight:700;cursor:pointer;padding:6px 0}
+  .bdPies{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+  @media (max-width:640px){.bdPies{grid-template-columns:1fr}}
+  .bdPie{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;gap:14px;align-items:flex-start;min-width:0}
+  .bdPie svg{flex:0 0 auto;touch-action:manipulation}
+  .bdPie svg path{cursor:pointer}
+  .bdPie svg path.dim{opacity:.35}
+  .bdPie .leg{font-size:12.5px;line-height:1.6;min-width:0}
+  .bdPie .leg b{display:block;font-size:13px;margin-bottom:2px}
+  .bdPie .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  .bdPie .leg .row{cursor:pointer}
+  .bdPie .leg .row.sel{font-weight:800}
+  .bdPie .leg .sub{padding-left:16px;color:var(--muted)}
+  .bdEmpty{font-size:12px;color:var(--muted);padding:6px 0}
+  .reasonRow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;width:100%}
+  .reasonRow .chip{padding:9px 12px;font-size:13px}
+  .outcomeTag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+  .outcomeTag.lost{background:#fdecea;color:#8c1f1f}.outcomeTag.unknown{background:#f0eee9;color:#6f6a61}.outcomeTag.won{background:#eef6ee;color:var(--ok)}
   .dupStrip{background:#fdecea;border:2px solid #c62828;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px;color:#7a1414;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
   .dupStrip b{color:#1d1b17}
   .dupStrip button{background:var(--ok);color:#fff;border:none;border-radius:8px;padding:11px 14px;font-weight:800;font-size:14px;min-height:44px;cursor:pointer}
@@ -206,6 +240,9 @@
      New Quote opens on "who is this for" and stays gated until a person is picked; Start Quote on every lead row;
      Quoted filter shows quote number + status on the lead; Duplicate on every quote; 4 tabs + gear (Rate Card, Sign out);
      all emoji removed except temperature dots, the emergency siren and plain symbols; tags shown as words (emoji stays as the stored key) */
+  /* Build 9 (v9.1) "Scoreboard": fifth tab Board — every job in one of Lead / Quoted / Won / Lost / Unknown with date + trade filters;
+     Won = the customer signed (proposal_shares.signed_at); Lost asks one of four reasons, Unknown asks nothing (jobs.outcome, lost_reason, outcome_at);
+     two app-drawn pies: lead source (tap a slice to filter the board) and Won/Lost/Unknown (tap Lost to split by reason) */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -441,15 +478,16 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.0 — One Door</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.1 — Scoreboard</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 <nav>
   <button class="active" data-s="leads">Leads</button>
-  <button data-s="sched">Schedule</button>
-  <button data-s="new">New Quote</button>
+  <button data-s="sched"><span class="full">Schedule</span><span class="short">Sched</span></button>
+  <button data-s="new"><span class="full">New Quote</span><span class="short">Quote</span></button>
   <button data-s="list">Quotes</button>
+  <button data-s="board">Board</button>
 </nav>
 
 <main>
@@ -612,6 +650,16 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <div class="pipeStats" id="pipeStats"></div>
     <div class="chipRow" id="chipRow"></div>
     <div id="qList"><p class="note">Loading…</p></div>
+  </section>
+
+  <section id="s-board" class="screen">
+    <h2>Board</h2>
+    <div class="bdBar" id="bdRange"></div>
+    <div class="bdBar" id="bdTrades"></div>
+    <div class="bdSrcBanner" id="bdSrcBanner"></div>
+    <div class="bdCols" id="bdCols"><p class="note">Loading…</p></div>
+    <div class="bdPies" id="bdPies"></div>
+    <p class="note">Won = the customer signed. Lost and Unknown are marked by you on the lead or the quote. Tap a pie slice to filter the whole board; tap it again to clear.</p>
   </section>
 
   <section id="s-rates" class="screen">
@@ -920,6 +968,7 @@ document.querySelectorAll("nav button").forEach(b=>{
     if(b.dataset.s==="list") loadQuotes();
     if(b.dataset.s==="leads") loadLeads();
     if(b.dataset.s==="sched") loadSchedule(); /* Build 7 */
+    if(b.dataset.s==="board") loadBoard(); /* Build 9 */
   });
 });
 /* Build 8: Rate Card + Sign out live behind the gear, not a tab */
@@ -1099,13 +1148,30 @@ $("saveLead").addEventListener("click", async ()=>{
 let leadFilter="Open";
 let leadLimit=15;
 let leadQuoteByJob={}; /* Build 8 */
+/* Build 9: outcomes */
+const LOST_REASONS=["Too much money","Went with someone else","Timing","Other"];
+let lostPromptFor=null;   /* lead id showing the reason chips */
+let lostPromptForQ=null;  /* quote id showing the reason chips */
+async function markOutcome(jobId, outcome, reason, quoteId, isLeadRow){
+  /* outcome: "Lost" | "Unknown" | null (reopen). Leads change status too so the Leads filters stay honest;
+     quoted jobs keep status Quoted and carry the outcome on the job. */
+  const patch={outcome:outcome, lost_reason:outcome==="Lost"?(reason||null):null, outcome_at:outcome?new Date().toISOString():null};
+  if(isLeadRow){ patch.status = outcome==="Lost" ? "Lost" : outcome==="Unknown" ? "Unknown" : "Lead"; }
+  const {error}=await db.from("jobs").update(patch).eq("id",jobId);
+  if(error){ toast("Update failed: "+error.message+(/outcome|lost_reason|outcome_at/.test(error.message)?" — run the Build 9 SQL in Supabase first":"")); return false; }
+  if(quoteId){
+    const qPatch = outcome==="Lost" ? {status:"Declined"} : outcome===null ? {status:"Sent"} : null;
+    if(qPatch){ const {error:e2}=await db.from("quotes").update(qPatch).eq("id",quoteId); if(e2) toast("Quote status not updated: "+e2.message); }
+  }
+  return true;
+}
 const tagName = e => { const t=TAGS.find(x=>x.e===e); return t?t.n:e; };
 const tagNames = arr => (arr||[]).map(tagName).join(" · ");
 async function loadLeads(){
   $("leadList").innerHTML='<p class="note">Loading…</p>';
-  const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : leadFilter==="Quoted" ? ["Quoted"] : ["Lead","Quoted","Lost"];
+  const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : leadFilter==="Quoted" ? ["Quoted"] : leadFilter==="Unknown" ? ["Unknown"] : ["Lead","Quoted","Lost","Unknown"];
   const {data,error} = await db.from("jobs")
-    .select("id,job_type,status,appointment,temperature,tags,emergency,notes,created_at,street_address,city,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
+    .select("id,job_type,status,appointment,temperature,tags,emergency,notes,created_at,street_address,city,outcome,lost_reason,outcome_at,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
     .in("status",statuses).order("created_at",{ascending:false}).limit(500);
   if(error){ $("leadList").innerHTML='<p class="note">Could not load leads: '+error.message+'. If it mentions a missing column, run the wave-two SQL first.</p>'; return; }
   /* Build 8: latest quote per job so the lead row can show "Q-0142 · Sent" */
@@ -1128,7 +1194,7 @@ async function loadLeads(){
   renderLeads();
 }
 function renderLeadChips(){
-  $("leadChips").innerHTML=["Open","Quoted","Lost","All"].map(o=>
+  $("leadChips").innerHTML=["Open","Quoted","Lost","Unknown","All"].map(o=>
     `<button class="chip ${leadFilter===o?'sel':''}" data-lf="${o}">${o}</button>`).join("")
     /* Build 7.6: temperature + tag filters · Build 8: tags read as words */
     + ["🟢","🟡","🔴"].map(t=>`<button class="chip ${leadTempFilter===t?'sel':''}" data-tf="${t}">${t}</button>`).join("")
@@ -1175,14 +1241,17 @@ function renderLeads(){
       detail=`<div class="leadDetail">
         ${contact?`<div class="dMeta">${contact}</div>`:""}
         ${l.street_address?`<div class="dMeta">${l.street_address}${l.city?", "+l.city:""}</div>`:""}
-        <div class="dMeta">Source: ${cu.lead_source||"—"}${l.emergency?" · 🚨 EMERGENCY":""}</div>
+        <div class="dMeta">Source: ${cu.lead_source||"—"}${l.emergency?" · 🚨 EMERGENCY":""}${l.outcome==="Lost"?" · Lost"+(l.lost_reason?": "+esc(l.lost_reason):""):l.outcome==="Unknown"?" · Unknown — never heard back":""}</div>
         <div class="dMeta">Temp: ${["🟢","🟡","🔴"].map(t=>`<button class="chip ${tclr(l.temperature)===t?'sel':''}" data-settemp="${t}" data-sid="${l.id}">${t}</button>`).join("")}</div>
         <div class="dMeta">Tags: ${TAGS.map(t=>`<button class="chip ${(l.tags||[]).includes(t.e)?'sel':''}" data-tagtog="${t.e}" data-sid="${l.id}">${t.n}</button>`).join("")}</div>
         ${l.notes?`<div class="dMeta">"${l.notes}"</div>`:""}
         <div class="actRow">
           ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">Add to Calendar</button>`:""}
-          ${l.status==="Lead"?`<button class="actBtn gray" data-lost="${l.id}">Mark Lost</button>`
-          :l.status==="Lost"?`<button class="actBtn" data-reopen="${l.id}">Reopen lead</button>`:""}
+          ${l.status==="Lead"
+            ? (lostPromptFor===l.id
+                ? `<div class="reasonRow">${LOST_REASONS.map(r=>`<button class="chip" data-lostwhy="${l.id}" data-why="${esc(r)}">${esc(r)}</button>`).join("")}<button class="chip" data-lostcancel="${l.id}">✕</button></div>`
+                : `<button class="actBtn gray" data-lost="${l.id}">Lost</button><button class="actBtn gray" style="color:#6f6a61;border-color:#6f6a61" data-unknown="${l.id}">Unknown</button>`)
+          :(l.status==="Lost"||l.status==="Unknown")?`<button class="actBtn" data-reopen="${l.id}">Reopen lead</button>`:""}
         </div>
       </div>`;
     }
@@ -1192,7 +1261,7 @@ function renderLeads(){
       ? `<button class="sq" data-quote="${l.id}" type="button">Start Quote</button>`
       : lq ? `<button class="qs" data-jumpq="${lq.id}" type="button">${esc(lq.quote_number)} · ${esc(lq.status)}</button>` : "";
     return `<div class="leadRow ${l.emergency?'emg':''}" data-lead="${l.id}">
-      <div style="min-width:0"><div class="who">${l.emergency?"🚨 ":""}${who}</div>
+      <div style="min-width:0"><div class="who">${l.emergency?"🚨 ":""}${who}${l.status==="Lost"?`<span class="outcomeTag lost">LOST</span>`:l.status==="Unknown"?`<span class="outcomeTag unknown">UNKNOWN</span>`:""}</div>
       <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+tagNames(l.tags):""}</div></div>
       <div class="rowActs">${rowAct}<div class="temp" data-tcyc="${l.id}" title="Tap to change">${tclr(l.temperature)}</div></div>
     </div>${detail}`;
@@ -1235,19 +1304,27 @@ function renderLeads(){
   document.querySelectorAll("[data-jumpq]").forEach(b=>b.addEventListener("click",e=>{
     e.stopPropagation(); jumpToQuote(b.dataset.jumpq);
   }));
-  document.querySelectorAll("[data-lost]").forEach(b=>b.addEventListener("click",async e=>{
+  /* Build 9: Lost asks why (4 chips); Unknown asks nothing */
+  document.querySelectorAll("[data-lost]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); lostPromptFor=b.dataset.lost; renderLeads();
+  }));
+  document.querySelectorAll("[data-lostcancel]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); lostPromptFor=null; renderLeads();
+  }));
+  document.querySelectorAll("[data-lostwhy]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation(); lostPromptFor=null;
+    const ok=await markOutcome(b.dataset.lostwhy,"Lost",b.dataset.why,null,true);
+    if(ok){ toast("Lost — "+b.dataset.why); loadLeads(); }
+  }));
+  document.querySelectorAll("[data-unknown]").forEach(b=>b.addEventListener("click",async e=>{
     e.stopPropagation();
-    const {error}=await db.from("jobs").update({status:"Lost"}).eq("id",b.dataset.lost);
-    if(error){ toast("Update failed"); return; }
-    toast("Marked lost — they stay on the email list");
-    loadLeads();
+    const ok=await markOutcome(b.dataset.unknown,"Unknown",null,null,true);
+    if(ok){ toast("Marked Unknown — they can still come back"); loadLeads(); }
   }));
   document.querySelectorAll("[data-reopen]").forEach(b=>b.addEventListener("click",async e=>{
     e.stopPropagation();
-    const {error}=await db.from("jobs").update({status:"Lead"}).eq("id",b.dataset.reopen);
-    if(error){ toast("Update failed"); return; }
-    toast("Lead reopened");
-    loadLeads();
+    const ok=await markOutcome(b.dataset.reopen,null,null,null,true);
+    if(ok){ toast("Lead reopened"); loadLeads(); }
   }));
 }
 $("leadSearch").addEventListener("input",()=>{ leadLimit=15; renderLeads(); });
@@ -1318,6 +1395,137 @@ function renderLeadBanner(){
     clearCustFields(); setCustMode("search"); /* Build 8: back to "who is this for" — people are created on Leads */
     toast("Detached — pick who this quote is for");
   });
+}
+
+/* ============ BUILD 9 — BOARD ============ */
+let bdRange="month", bdTrade=null, bdSource=null, bdLostOpen=false, bdData=null, bdShowAll={};
+const BD_SRC_COLORS={"Google":"#1a56b0","Website":"#1e7a3c","Referral":"#d9641e","Realtor":"#7b1fa2","Repeat Customer":"#b06f1a","Job Sign":"#c62828","Truck/Yard Sign":"#0f8f8f","Facebook":"#3b5998","Other":"#6f6a61","—":"#a49b8d"};
+const srcBucket = ls => { const b=(ls||"").split(" · ")[0].trim(); return b||"—"; };
+const srcDetail = ls => { const i=(ls||"").indexOf(" · "); return i>0?ls.slice(i+3):""; };
+function bdRangeStart(){
+  const now=new Date(), d0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(bdRange==="week"){ const d=new Date(d0); d.setDate(d.getDate()-((d.getDay()+6)%7)); return d; }
+  if(bdRange==="month") return new Date(now.getFullYear(),now.getMonth(),1);
+  if(bdRange==="year") return new Date(now.getFullYear(),0,1);
+  return null;
+}
+async function loadBoard(){
+  $("bdCols").innerHTML='<p class="note">Loading…</p>';
+  renderBdBars();
+  const [jr,qr,sr]=await Promise.all([
+    db.from("jobs").select("id,job_type,status,created_at,city,outcome,lost_reason,outcome_at,customers:customer_id(id,first_name,last_name,lead_source)").order("created_at",{ascending:false}).limit(2000),
+    db.from("quotes").select("id,job_id,quote_number,status,markup_pct,notes,created_at,quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)").order("created_at",{ascending:false}).limit(2000),
+    db.from("proposal_shares").select("quote_id,signed_at").not("signed_at","is",null)
+  ]);
+  if(jr.error){ $("bdCols").innerHTML='<p class="note">Could not load the board: '+esc(jr.error.message)+(/outcome/.test(jr.error.message)?' — run the Build 9 SQL in Supabase first.':'')+'</p>'; return; }
+  const signedAt={}; (sr.data||[]).forEach(r=>{ if(!signedAt[r.quote_id]||r.signed_at>signedAt[r.quote_id]) signedAt[r.quote_id]=r.signed_at; });
+  const qByJob={}; (qr.data||[]).forEach(q=>{ (qByJob[q.job_id]=qByJob[q.job_id]||[]).push(q); });
+  bdData=(jr.data||[]).map(j=>classifyJob(j,qByJob[j.id]||[],signedAt));
+  renderBoard();
+}
+function classifyJob(j,quotes,signedAt){
+  const live=quotes.filter(q=>q.status!=="Voided");
+  const signed=live.filter(q=>q.status==="Approved"||parseNotes(q.notes).signedby||signedAt[q.id]);
+  const cu=j.customers||{};
+  const who=((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"—";
+  const latest=live[0]||null;
+  const price=q=>{ try{ return quotePrice(q); }catch(_){ return 0; } };
+  let col,date,dollars=0,q=null,sub="";
+  if(signed.length){ q=signed[0]; col="won"; date=signedAt[q.id]||q.created_at; dollars=price(q); sub=q.quote_number+" · "+fmt0(dollars)+" · "+shortDate(date); }
+  else if(j.outcome==="Lost"){ col="lost"; date=j.outcome_at||j.created_at; q=latest; dollars=q?price(q):0; sub=(q?q.quote_number+" · "+fmt0(dollars):"lead")+(j.lost_reason?" · "+j.lost_reason:""); }
+  else if(j.outcome==="Unknown"){ col="unknown"; date=j.outcome_at||j.created_at; q=latest; dollars=q?price(q):0; const quiet=daysSince(q?q.created_at:j.created_at); sub=(q?q.quote_number+" · "+fmt0(dollars):"lead")+" · "+quiet+" days quiet"; }
+  else if(latest){ col="quoted"; q=latest; date=q.created_at; dollars=price(q); sub=q.quote_number+" · "+fmt0(dollars)+" · "+daysSince(date)+" days"; }
+  else if(j.status==="Lost"){ col="lost"; date=j.outcome_at||j.created_at; sub="lead"; }
+  else if(j.status==="Unknown"){ col="unknown"; date=j.outcome_at||j.created_at; sub="lead · "+daysSince(j.created_at)+" days quiet"; }
+  else { col="lead"; date=j.created_at; sub=(j.job_type||"")+(j.city?" · "+j.city:"")+" · "+daysSince(date)+" days"; }
+  return {id:j.id, col, date:new Date(date), dollars, who, sub, quoteId:q?q.id:null, job_type:j.job_type||"", source:srcBucket(cu.lead_source), detail:srcDetail(cu.lead_source), reason:j.lost_reason||null};
+}
+const daysSince = d => Math.max(0,Math.round((Date.now()-new Date(d))/86400000));
+const shortDate = d => new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+function bdFiltered(){
+  const start=bdRangeStart();
+  return (bdData||[]).filter(x=>(!start||x.date>=start)&&(!bdTrade||x.job_type.indexOf(bdTrade)>=0)&&(!bdSource||x.source===bdSource));
+}
+function renderBdBars(){
+  $("bdRange").innerHTML=[["week","This week"],["month","This month"],["year","This year"],["all","All"]].map(([k,l])=>`<button class="chip ${bdRange===k?'sel':''}" data-bdr="${k}">${l}</button>`).join("");
+  $("bdTrades").innerHTML=["Roofing","Siding","Decking","Repair"].map(t=>`<button class="chip ${bdTrade===t?'sel':''}" data-bdt="${t}">${t}</button>`).join("");
+  $("bdRange").querySelectorAll("[data-bdr]").forEach(c=>c.addEventListener("click",()=>{ bdRange=c.dataset.bdr; bdShowAll={}; renderBdBars(); renderBoard(); }));
+  $("bdTrades").querySelectorAll("[data-bdt]").forEach(c=>c.addEventListener("click",()=>{ bdTrade=bdTrade===c.dataset.bdt?null:c.dataset.bdt; bdShowAll={}; renderBdBars(); renderBoard(); }));
+  const sb=$("bdSrcBanner"); sb.style.display=bdSource?"block":"none"; sb.textContent=bdSource?"Showing "+bdSource+" only — tap to clear":"";
+  sb.onclick=()=>{ bdSource=null; bdShowAll={}; renderBoard(); renderBdBars(); };
+}
+function renderBoard(){
+  if(!bdData) return;
+  const rows=bdFiltered();
+  const cols=[["lead","Lead","open, oldest first",(a,b)=>a.date-b.date],["quoted","Quoted","sent, waiting",(a,b)=>a.date-b.date],["won","Won","signed",(a,b)=>b.date-a.date],["lost","Lost","they said no",(a,b)=>b.date-a.date],["unknown","Unknown","never heard back",(a,b)=>a.date-b.date]];
+  $("bdCols").innerHTML=cols.map(([k,t,d,sort])=>{
+    const xs=rows.filter(x=>x.col===k).sort(sort);
+    const total=xs.reduce((s,x)=>s+x.dollars,0);
+    const shown=bdShowAll[k]?xs:xs.slice(0,6);
+    return `<div class="bdCol ${k}" id="bdcol-${k}"><h4>${t}</h4><div class="n">${xs.length}${k!=="lead"&&total?" · "+fmtK(total):""}</div><div class="d">${d}</div>
+      ${xs.length?shown.map(x=>`<div class="bdCard" data-bdj="${x.id}" data-bdq="${x.quoteId||""}"><b>${esc(x.who)}</b><span class="m">${esc(x.sub)}</span></div>`).join(""):`<div class="bdEmpty">Nothing here</div>`}
+      ${xs.length>6&&!bdShowAll[k]?`<div class="bdMore" data-bdmore="${k}">Show all ${xs.length}</div>`:""}</div>`;
+  }).join("");
+  $("bdCols").querySelectorAll("[data-bdmore]").forEach(b=>b.addEventListener("click",()=>{ bdShowAll[b.dataset.bdmore]=true; renderBoard(); }));
+  $("bdCols").querySelectorAll(".bdCard").forEach(c=>c.addEventListener("click",()=>{
+    if(c.dataset.bdq) jumpToQuote(c.dataset.bdq);
+    else { leadFilter="All"; openLeadId=c.dataset.bdj; showTab("leads"); }
+  }));
+  renderBdPies(rows);
+}
+const fmtK = n => n>=100000 ? "$"+Math.round(n/1000)+"k" : fmt0(n);
+function pieSVG(slices,selKey){
+  const total=slices.reduce((s,x)=>s+x.value,0);
+  if(!total) return `<svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="20"/></svg>`;
+  let a=-Math.PI/2, out="";
+  slices.forEach(x=>{
+    if(!x.value) return;
+    const frac=x.value/total, a2=a+frac*2*Math.PI;
+    if(frac>=0.999){ out+=`<circle cx="60" cy="60" r="50" fill="none" stroke="${x.color}" stroke-width="20" data-slice="${esc(x.key)}"/>`; }
+    else {
+      const r=50, x1=60+r*Math.cos(a), y1=60+r*Math.sin(a), x2=60+r*Math.cos(a2), y2=60+r*Math.sin(a2);
+      out+=`<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${frac>0.5?1:0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}" fill="none" stroke="${x.color}" stroke-width="20" data-slice="${esc(x.key)}" class="${selKey&&selKey!==x.key?'dim':''}"/>`;
+    }
+    a=a2;
+  });
+  return `<svg width="120" height="120" viewBox="0 0 120 120" role="img">${out}</svg>`;
+}
+function renderBdPies(rows){
+  /* Pie 1: where leads came from — over every job in range (source filter NOT applied, so you can pick another slice) */
+  const start=bdRangeStart();
+  const base=(bdData||[]).filter(x=>(!start||x.date>=start)&&(!bdTrade||x.job_type.indexOf(bdTrade)>=0));
+  const byS={}; base.forEach(x=>byS[x.source]=(byS[x.source]||0)+1);
+  const srcSlices=Object.keys(byS).sort((a,b)=>byS[b]-byS[a]).map(k=>({key:k,label:k,value:byS[k],color:BD_SRC_COLORS[k]||"#a49b8d"}));
+  const n1=base.length||1;
+  const details={}; if(bdSource){ rows.forEach(x=>{ if(x.detail) details[x.detail]=(details[x.detail]||0)+1; }); }
+  const detailList=Object.keys(details).sort((a,b)=>details[b]-details[a]).slice(0,8);
+  /* Pie 2: Won / Lost / Unknown — closed jobs only, respects every filter */
+  const won=rows.filter(x=>x.col==="won"), lost=rows.filter(x=>x.col==="lost"), unk=rows.filter(x=>x.col==="unknown");
+  const closed=won.length+lost.length+unk.length||1;
+  const sum=xs=>xs.reduce((s,x)=>s+x.dollars,0);
+  const pct=n=>Math.round(n/closed*100)+"%";
+  const outSlices=[{key:"won",label:"Won",value:won.length,color:"#1e7a3c"},{key:"lost",label:"Lost",value:lost.length,color:"#8c1f1f"},{key:"unknown",label:"Unknown",value:unk.length,color:"#6f6a61"}];
+  const byR={}; lost.forEach(x=>{ const r=x.reason||"No reason recorded"; byR[r]=(byR[r]||0)+1; });
+  $("bdPies").innerHTML=`
+    <div class="bdPie"><div id="pie1">${pieSVG(srcSlices,bdSource)}</div>
+      <div class="leg"><b>Where leads came from</b>
+        ${srcSlices.length?srcSlices.map(x=>`<div class="row ${bdSource===x.key?'sel':''}" data-src="${esc(x.key)}"><i style="background:${x.color}"></i>${esc(x.label)} ${Math.round(x.value/n1*100)}% · ${x.value}</div>`).join(""):'<div class="bdEmpty">No jobs in this range</div>'}
+        ${detailList.length?`<div class="sub">${detailList.map(d=>esc(d)+" · "+details[d]).join("<br>")}</div>`:""}
+      </div></div>
+    <div class="bdPie"><div id="pie2">${pieSVG(outSlices,null)}</div>
+      <div class="leg"><b>Won · Lost · Unknown</b>
+        <div class="row" data-out="won"><i style="background:#1e7a3c"></i>Won ${pct(won.length)} · ${won.length} · ${fmtK(sum(won))}</div>
+        <div class="row ${bdLostOpen?'sel':''}" data-out="lost"><i style="background:#8c1f1f"></i>Lost ${pct(lost.length)} · ${lost.length} · ${fmtK(sum(lost))}</div>
+        ${bdLostOpen&&lost.length?`<div class="sub">${Object.keys(byR).sort((a,b)=>byR[b]-byR[a]).map(r=>esc(r)+" · "+byR[r]).join("<br>")}</div>`:""}
+        <div class="row" data-out="unknown"><i style="background:#6f6a61"></i>Unknown ${pct(unk.length)} · ${unk.length} · ${fmtK(sum(unk))}</div>
+        ${(won.length+lost.length+unk.length)?"":'<div class="bdEmpty">No closed jobs in this range yet</div>'}
+      </div></div>`;
+  const pickSrc=k=>{ bdSource=bdSource===k?null:k; bdShowAll={}; renderBdBars(); renderBoard(); };
+  $("pie1").querySelectorAll("[data-slice]").forEach(el=>el.addEventListener("click",()=>pickSrc(el.dataset.slice)));
+  $("bdPies").querySelectorAll("[data-src]").forEach(el=>el.addEventListener("click",()=>pickSrc(el.dataset.src)));
+  const pickOut=k=>{ if(k==="lost"){ bdLostOpen=!bdLostOpen; renderBdPies(rows); } else { const c=$("bdcol-"+k); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); } };
+  $("pie2").querySelectorAll("[data-slice]").forEach(el=>el.addEventListener("click",()=>pickOut(el.dataset.slice)));
+  $("bdPies").querySelectorAll("[data-out]").forEach(el=>el.addEventListener("click",()=>pickOut(el.dataset.out)));
 }
 
 /* ============ CUSTOMER-FACING PREVIEW ============ */
@@ -2255,7 +2463,7 @@ function renderRates(){
    Post-save affordance in the save-confirmation area. Save itself stays in the
    fixed tape bar (standing rule). Fetches the quote fresh with the exact
    loadQuotes select shape, then runs the one shared pipeline. */
-const QUOTE_SELECT = "id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,temperature,tags,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)";
+const QUOTE_SELECT = "id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,temperature,tags,outcome,lost_reason,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)";
 const shareNowButton = quoteId =>
   ` <button class="copyBtn" data-sharenow="${quoteId}" style="background:var(--ok);margin-top:8px">Share to sign now</button>`;
 document.addEventListener("click", async e=>{
@@ -2572,7 +2780,7 @@ function renderPipeStats(){
     <div class="ps"><div class="v">${fmt0(outVal)}</div><div class="k">Out for answer</div></div>`;
 }
 function renderChips(){
-  const opts=["All","Draft","Sent","Approved","Declined","Voided"]; /* Build 5: voided quotes stay findable */
+  const opts=["All","Draft","Sent","Approved","Declined","Voided"]; /* Build 5: voided quotes stay findable · Build 9: Declined = Lost */
   $("chipRow").innerHTML=opts.map(o=>{
     const n = o==="All" ? quotesCache.length : quotesCache.filter(q=>q.status===o).length;
     return `<button class="chip ${statusFilter===o?'sel':''}" data-f="${o}">${o} (${n})</button>`;
@@ -2587,7 +2795,7 @@ function renderChips(){
 async function loadQuotes(){
   $("qList").innerHTML='<p class="note">Loading…</p>';
   const {data,error} = await db.from("quotes")
-    .select("id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,temperature,tags,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)")
+    .select("id,job_id,quote_number,tier,status,markup_pct,title,notes,created_at,photos,jobs(customer_id,city,street_address,state,zip,job_type,job_size,job_size_unit,temperature,tags,outcome,lost_reason,customers:customer_id(first_name,last_name,phone,email,lead_source)),quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)")
     .order("created_at",{ascending:false}).limit(50);
   if(error){ $("qList").innerHTML='<p class="note">Could not load quotes: '+error.message+'</p>'; return; }
   if(!data.length){ $("qList").innerHTML='<p class="note">No quotes yet.</p>'; return; }
@@ -2754,9 +2962,14 @@ function renderQuoteList(openId){
         ${phasing}${noWarranty}${signedLine}${custSel}${custCom}${voidedLine}
         ${phStrip}
         ${optBlocks}
+        ${q.jobs?.outcome==="Lost"?`<div class="dMeta" style="color:#8c1f1f;font-weight:700">Lost${q.jobs.lost_reason?" — "+esc(q.jobs.lost_reason):""}</div>`:q.jobs?.outcome==="Unknown"?`<div class="dMeta" style="color:#6f6a61;font-weight:700">Unknown — never heard back</div>`:""}
         <div class="statusRow">
-          ${["Draft","Sent","Approved","Declined"].map(s=>
-            `<button class="stBtn ${q.status===s?'cur':''}" data-q="${q.id}" data-s="${s}">${s}</button>`).join("")}
+          ${["Draft","Sent","Approved"].map(s=>
+            `<button class="stBtn ${q.status===s&&q.jobs?.outcome!=="Lost"&&q.jobs?.outcome!=="Unknown"?'cur':''}" data-q="${q.id}" data-s="${s}">${s}</button>`).join("")}
+          ${lostPromptForQ===q.id
+            ? `<div class="reasonRow">${LOST_REASONS.map(r=>`<button class="chip" data-qlostwhy="${q.id}" data-job="${q.job_id}" data-why="${esc(r)}">${esc(r)}</button>`).join("")}<button class="chip" data-qlostcancel="${q.id}">✕</button></div>`
+            : `<button class="stBtn ${q.jobs?.outcome==="Lost"?'cur':''}" data-qlost="${q.id}">Lost</button>
+               <button class="stBtn ${q.jobs?.outcome==="Unknown"?'cur':''}" data-qunknown="${q.id}" data-job="${q.job_id}">Unknown</button>`}
           <button class="copyBtn" data-c="${q.id}">Copy summary</button>
           <button class="copyBtn" data-ph="${q.id}">Photos${(q.photos&&q.photos.length)?" · "+q.photos.length:""}</button>
           <button class="copyBtn" data-pv="${q.id}" style="background:var(--orange)">Preview</button>
@@ -2781,12 +2994,26 @@ function renderQuoteList(openId){
     openQuoteId = (openQuoteId===id) ? null : id;
     renderQuoteList(openQuoteId);
   }));
-  document.querySelectorAll(".stBtn").forEach(b=>b.addEventListener("click",async e=>{
+  document.querySelectorAll("[data-qlost]").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); lostPromptForQ=b.dataset.qlost; renderQuoteList(openQuoteId); }));
+  document.querySelectorAll("[data-qlostcancel]").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); lostPromptForQ=null; renderQuoteList(openQuoteId); }));
+  document.querySelectorAll("[data-qlostwhy]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation(); lostPromptForQ=null;
+    const ok=await markOutcome(b.dataset.job,"Lost",b.dataset.why,b.dataset.qlostwhy,false);
+    if(ok){ toast("Lost — "+b.dataset.why); loadQuotes(); }
+  }));
+  document.querySelectorAll("[data-qunknown]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    const ok=await markOutcome(b.dataset.job,"Unknown",null,b.dataset.qunknown,false);
+    if(ok){ toast("Marked Unknown"); loadQuotes(); }
+  }));
+  document.querySelectorAll(".stBtn[data-s]").forEach(b=>b.addEventListener("click",async e=>{
     e.stopPropagation();
     const id=b.dataset.q, st=b.dataset.s;
     const {error}=await db.from("quotes").update({status:st}).eq("id",id);
     if(error){ toast("Status update failed"); return; }
     const q=quotesCache.find(x=>x.id===id); if(q) q.status=st;
+    /* Build 9: a live status clears any Lost/Unknown outcome on the job */
+    if(q&&q.jobs&&(q.jobs.outcome==="Lost"||q.jobs.outcome==="Unknown")){ await markOutcome(q.job_id,null,null,null,false); q.jobs.outcome=null; q.jobs.lost_reason=null; }
     renderPipeStats(); renderChips();
     renderQuoteList(id);
     toast("Marked "+st);
