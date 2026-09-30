@@ -245,7 +245,8 @@
      two app-drawn pies: lead source (tap a slice to filter the board) and Won/Lost/Unknown (tap Lost to split by reason) */
   /* Build 10 (v9.2) "Camera Roll": From CompanyCam button in the quote Photos section; the CompanyCam project is tied once per job
      (jobs.companycam_project_id / _name); picked photos are COPIED into the quote-photos bucket by the companycam Edge Function
-     (the CompanyCam token lives only in a Supabase secret, never in this file) */
+     (the CompanyCam token lives only in a Supabase secret, never in this file)
+     v9.2.1: copies arrive as full-size originals (temp raw- files) and are shrunk to 1600px on the device, same as iPad photos */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -495,7 +496,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.2 — Camera Roll</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.2.1 — Camera Roll</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -3565,6 +3566,24 @@ async function ccShowGrid(){
     ccPhotos=d.photos||[]; ccDrawGrid();
   }catch(err){ if($("ccGridBox")) $("ccGridBox").innerHTML='<p class="note">'+esc(err.message)+'</p>'; }
 }
+/* v9.2.1: the function hands back FULL-SIZE originals as temporary raw- files. Each is shrunk here with the same
+   resizePhoto/uploadQuotePhoto path iPad camera photos use (1600px), then the raw file is deleted. */
+async function ccFinish(urls,qid){
+  const out=[]; let failed=0;
+  for(let i=0;i<urls.length;i++){
+    const u=urls[i];
+    if(!/\/quote-photos\/[^?#]*\/raw-[^\/?#]*$/.test(u)){ out.push(u); continue; } /* already final size (fallback path) */
+    try{
+      toast("Sharpening photo "+(i+1)+" of "+urls.length+"…");
+      const r=await fetch(u);
+      if(!r.ok) throw new Error("download "+r.status);
+      out.push(await uploadQuotePhoto(qid,await r.blob()));
+    }catch(err){ failed++; console.error("cc sharpen failed",err); }
+    const rawPath=u.split("/quote-photos/")[1];
+    if(rawPath) db.storage.from("quote-photos").remove([decodeURIComponent(rawPath)]);
+  }
+  return {urls:out,failed};
+}
 async function ccAddPicked(){
   if(ccBusy||!ccPicked.size) return;
   ccBusy=true;
@@ -3575,8 +3594,11 @@ async function ccAddPicked(){
   toast("Copying "+ids.length+" photo"+(ids.length>1?"s":"")+" from CompanyCam…");
   try{
     const d=await ccCall({action:"copy",quote_id:qid,photo_ids:ids});
-    const urls=d.urls||[];
-    if(!urls.length) throw new Error((d.failed&&d.failed[0]&&d.failed[0].error)||"no photos could be copied");
+    const raw=d.urls||[];
+    if(!raw.length) throw new Error((d.failed&&d.failed[0]&&d.failed[0].error)||"no photos could be copied");
+    const fin=await ccFinish(raw,qid);
+    const urls=fin.urls;
+    if(!urls.length) throw new Error("photos copied but could not be resized — try again");
     builderPhotos.push(...urls);
     if(editingQuote){ /* edit mode persists immediately — same as iPad photos */
       const {error}=await db.from("quotes").update({photos:builderPhotos}).eq("id",editingQuote.id);
@@ -3585,7 +3607,7 @@ async function ccAddPicked(){
     }
     renderBPhotos();
     ccPicked=new Set();
-    const nf=(d.failed||[]).length;
+    const nf=(d.failed||[]).length+fin.failed;
     toast(builderPhotos.length+" photo"+(builderPhotos.length!==1?"s":"")+" on this quote"+(nf?" — "+nf+" could not be copied, try again":" — first is the cover"));
   }catch(err){ toast("CompanyCam copy failed: "+(err.message||"unknown error")); }
   ccBusy=false; ccDrawGrid();
