@@ -243,6 +243,9 @@
   /* Build 9 (v9.1) "Scoreboard": fifth tab Board — every job in one of Lead / Quoted / Won / Lost / Unknown with date + trade filters;
      Won = the customer signed (proposal_shares.signed_at); Lost asks one of four reasons, Unknown asks nothing (jobs.outcome, lost_reason, outcome_at);
      two app-drawn pies: lead source (tap a slice to filter the board) and Won/Lost/Unknown (tap Lost to split by reason) */
+  /* Build 10 (v9.2) "Camera Roll": From CompanyCam button in the quote Photos section; the CompanyCam project is tied once per job
+     (jobs.companycam_project_id / _name); picked photos are COPIED into the quote-photos bucket by the companycam Edge Function
+     (the CompanyCam token lives only in a Supabase secret, never in this file) */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -270,6 +273,20 @@
   .bPh{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
   .bPh img{width:100%;height:100%;object-fit:cover;display:block}
   .bPh button{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;line-height:1;touch-action:manipulation}
+  .btn.cc{border-color:#1d4ed8;color:#1d4ed8;margin-top:8px}
+  #ccPanel{display:none;margin-top:12px;padding-top:12px;border-top:1.5px solid var(--line)}
+  #ccPanel.open{display:block}
+  #ccPanel .ccTie{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;margin-bottom:10px}
+  #ccPanel .ccTie button{background:none;border:none;color:var(--orange);font-weight:700;font-size:13px;flex:0 0 auto;touch-action:manipulation}
+  #ccPanel input[type=search]{width:100%;box-sizing:border-box;margin-bottom:8px}
+  .ccRow{padding:12px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;background:#fff;cursor:pointer;touch-action:manipulation}
+  .ccRow b{display:block;font-size:15px}
+  .ccRow .meta{font-size:12px;color:#8a8378;margin-top:2px}
+  .ccGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+  .ccPh{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#d9d3c6;touch-action:manipulation}
+  .ccPh img{width:100%;height:100%;object-fit:cover;display:block}
+  .ccPh.on{border-color:#1e7a3c}
+  .ccPh.on::after{content:"✓";position:absolute;right:4px;top:4px;background:#1e7a3c;color:#fff;border-radius:50%;width:22px;height:22px;font-size:14px;text-align:center;line-height:22px;font-weight:800}
   .tempBtn{flex:1;padding:12px;font-size:26px;border-radius:10px;border:2px solid var(--line);
     background:#fff;cursor:pointer;text-align:center}
   .tempBtn.sel{border-color:var(--orange);background:#fff3e8}
@@ -478,7 +495,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.1 — Scoreboard</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.2 — Camera Roll</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -602,6 +619,8 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
       <div id="bPhotoStrip"></div>
       <button class="btn ghost" id="bPhotoBtn" type="button">Add photos</button>
       <input type="file" id="bPhotoInput" accept="image/*" multiple style="display:none">
+      <button class="btn ghost cc" id="ccBtn" type="button">From CompanyCam</button>
+      <div id="ccPanel"></div>
       <p class="note">Photos upload right away and ride into the customer's proposal — first photo is the cover. Tap ✕ on a thumbnail to remove one.</p>
     </div>
 
@@ -1387,7 +1406,7 @@ function renderLeadBanner(){
       document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
       ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput"].forEach(id=>{ if($(id)) $(id).value=""; });
       const hadPhotoWork = builderPhotos.length>0;
-      builderPhotos=[]; pendingQuoteId=null; renderBPhotos(); setCustMode("search");
+      builderPhotos=[]; pendingQuoteId=null; ccReset(); renderBPhotos(); setCustMode("search");
       renderLeadBanner(); toast("Edit cancelled — prices and lines untouched"+(hadPhotoWork?" (photo changes were already saved)":""));
       return;
     }
@@ -2557,6 +2576,11 @@ async function saveQuote(){
       if(e2) throw e2;
       job=data;
     }
+    /* Build 10: a CompanyCam project picked before the job existed is remembered on the job now (never blocks the save) */
+    if(builderCc && builderCc.id && builderCc.jobId!==job.id){
+      const {error:eCc}=await db.from("jobs").update({companycam_project_id:builderCc.id,companycam_project_name:builderCc.name}).eq("id",job.id);
+      if(eCc) console.error("companycam tie not saved",eCc);
+    }
     let qNum;
     if(editingQuote){ qNum=editingQuote.number; } /* Build 5: same number forever */
     else {
@@ -2648,7 +2672,7 @@ async function saveQuote(){
     document.querySelectorAll(".tierBtn").forEach(x=>x.classList.remove("sel"));
     ["cFirst","cLast","cPhone","cEmail","cAddr","cCity","cZip","sizeInput","lfInput","cSourceDetail","custSearch"].forEach(id=>{ if($(id)) $(id).value=""; });
     /* Build 6 reset: photos belong to the saved quote now; picker back to search */
-    builderPhotos=[]; pendingQuoteId=null; pickedCustomer=null; cSrcSel=null;
+    builderPhotos=[]; pendingQuoteId=null; pickedCustomer=null; cSrcSel=null; ccReset();
     renderBPhotos(); drawSrcChips(); setCustMode("search");
     (TRADES[currentTrade].toggles||[]).forEach(tg=>{ if($(tg.id)) $(tg.id).checked=false; });
     (TRADES[currentTrade].selects||[]).forEach(s=>{ if($(s.id)) $(s.id).value=0; });
@@ -3221,10 +3245,10 @@ function loadQuoteIntoBuilder(q, mode){
     pendingLead=null;
     /* Build 6 Part 1: the quote's saved photos load into the builder strip and are
        managed in place — adds/removes in edit mode persist to the quote immediately */
-    builderPhotos=[...(q.photos||[])]; pendingQuoteId=null; renderBPhotos();
+    builderPhotos=[...(q.photos||[])]; pendingQuoteId=null; ccReset(); renderBPhotos();
   } else { /* duplicate-as-new: fresh quote, SAME customer + job (the change-order path) */
     editingQuote=null;
-    builderPhotos=[]; pendingQuoteId=null; renderBPhotos(); /* Build 6: photos stay on the original */
+    builderPhotos=[]; pendingQuoteId=null; ccReset(); renderBPhotos(); /* Build 6: photos stay on the original */
     pendingLead = q.job_id
       ? {jobId:q.job_id, customerId:q.jobs?.customer_id,
          name:((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"Customer"}
@@ -3256,6 +3280,8 @@ function loadQuoteIntoBuilder(q, mode){
 const SRC_BUCKETS=["Google","Website","Referral","Realtor","Repeat Customer","Job Sign","Truck/Yard Sign","Facebook","Other"];
 let cSrcSel=null, lSrcSel=null, pickedCustomer=null;
 let builderPhotos=[], pendingQuoteId=null;
+/* Build 10: CompanyCam tie for this quote's job — {id,name,jobId}; jobId null = job not created yet, tie saved with the quote */
+let builderCc=null, ccPicked=new Set(), ccPhotos=[], ccBusy=false, ccSearchSeq=0;
 
 function renderSrcChipsInto(elId, sel, onPick){
   const el=$(elId); if(!el) return;
@@ -3294,7 +3320,7 @@ function setCustMode(mode, srcText){
   /* Build 8: nothing below the customer card until a person is picked */
   $("qBody").classList.toggle("gated", mode==="search");
   if(mode==="search"){
-    pickedCustomer=null;
+    pickedCustomer=null; ccReset();
     pick.style.display=""; bar.style.display="none"; fields.style.display="none";
     $("custResults").innerHTML=""; $("custSearch").value="";
   } else if(mode==="new"){ /* Build 8: no longer reachable — people are created on the Leads form */
@@ -3429,6 +3455,142 @@ async function deleteBuilderPhoto(i){
   if(path) db.storage.from("quote-photos").remove([decodeURIComponent(path)]);
   renderBPhotos();
 }
+
+/* ============ BUILD 10 (v9.2) — CAMERA ROLL ============
+   "From CompanyCam" in the quote Photos section. The CompanyCam project is tied ONCE to the job
+   (jobs.companycam_project_id / _name) and remembered. Picked photos are COPIED server-side into the
+   quote-photos bucket by the `companycam` Edge Function — the quote stores OUR copy, never CompanyCam's link.
+   The CompanyCam token lives only in a Supabase secret; this page never sees it. */
+function ccReset(){
+  builderCc=null; ccPicked=new Set(); ccPhotos=[];
+  const p=$("ccPanel"); if(p){ p.classList.remove("open"); p.innerHTML=""; }
+}
+function ccJobId(){ return editingQuote?editingQuote.jobId:(pendingLead?pendingLead.jobId:null); }
+function ccFirstName(){
+  const f=($("cFirst")&&$("cFirst").value||"").trim();
+  if(f) return f;
+  if(pendingLead&&pendingLead.name) return String(pendingLead.name).split(" ")[0];
+  return (pickedCustomer&&pickedCustomer.first_name)||"";
+}
+function ccAgo(ts){
+  const n=Number(ts); if(!isFinite(n)||n<=0) return "";
+  const d=Math.floor((Date.now()/1000-n)/86400);
+  if(d<=0) return "today"; if(d===1) return "yesterday"; if(d<30) return d+" days ago";
+  return new Date(n*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+async function ccCall(body){
+  const {data,error}=await db.functions.invoke("companycam",{body});
+  if(error) throw new Error("could not reach the CompanyCam function ("+(error.message||"unknown")+")");
+  if(!data||!data.ok) throw new Error((data&&data.error)||"CompanyCam request failed");
+  return data;
+}
+async function ccLoadTie(){
+  const jobId=ccJobId();
+  if(builderCc && builderCc.jobId===jobId) return;
+  builderCc=null;
+  if(jobId){
+    const {data}=await db.from("jobs").select("companycam_project_id,companycam_project_name").eq("id",jobId).single();
+    if(data&&data.companycam_project_id) builderCc={id:data.companycam_project_id,name:data.companycam_project_name||"CompanyCam project",jobId};
+  }
+}
+async function ccOpen(){
+  const p=$("ccPanel");
+  if(p.classList.contains("open")){ p.classList.remove("open"); return; }
+  p.classList.add("open"); p.innerHTML='<p class="note">Loading…</p>';
+  try{ await ccLoadTie(); }catch(_){ builderCc=null; }
+  if(builderCc) ccShowGrid(); else ccShowPicker(ccFirstName());
+}
+function ccShowPicker(prefill){
+  const p=$("ccPanel");
+  p.innerHTML='<input type="search" id="ccQ" placeholder="Search CompanyCam projects" autocomplete="off"><div id="ccResults"></div><button class="btn ghost" id="ccClose" type="button">Close</button>';
+  $("ccQ").value=prefill||"";
+  let t=null;
+  $("ccQ").addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(ccSearch,350); });
+  $("ccClose").addEventListener("click",()=>p.classList.remove("open"));
+  ccSearch();
+}
+async function ccSearch(){
+  const box=$("ccResults"); if(!box) return;
+  const seq=++ccSearchSeq;
+  box.innerHTML='<p class="note">Searching…</p>';
+  try{
+    const d=await ccCall({action:"projects",query:$("ccQ").value.trim()});
+    if(seq!==ccSearchSeq||!$("ccResults")) return;
+    if(!d.projects.length){ box.innerHTML='<p class="note">No projects match. Try a shorter search (first name or street), or clear the box to see the newest projects.</p>'; return; }
+    box.innerHTML=d.projects.map((pr,i)=>{
+      const meta=[pr.address, pr.photo_count!=null?pr.photo_count+" photos":"", pr.updated?ccAgo(pr.updated):""].filter(Boolean).join(" · ");
+      return `<div class="ccRow" data-cci="${i}"><b>${esc(pr.name||"(no name)")}</b><div class="meta">${esc(meta)}</div></div>`;
+    }).join("");
+    box.querySelectorAll("[data-cci]").forEach(r=>r.addEventListener("click",()=>ccTie(d.projects[Number(r.dataset.cci)])));
+  }catch(err){ if(seq===ccSearchSeq&&$("ccResults")) $("ccResults").innerHTML='<p class="note">'+esc(err.message)+'</p>'; }
+}
+async function ccTie(pr){
+  const jobId=ccJobId();
+  builderCc={id:String(pr.id),name:pr.name||"CompanyCam project",jobId};
+  if(jobId){ /* job already exists — remember the tie now; a brand-new job gets it at Save */
+    const {error}=await db.from("jobs").update({companycam_project_id:builderCc.id,companycam_project_name:builderCc.name}).eq("id",jobId);
+    if(error) toast("Could not remember the project ("+error.message+") — photos still work this time");
+  }
+  ccShowGrid();
+}
+function ccDrawGrid(){
+  const box=$("ccGridBox"); if(!box) return;
+  if(!ccPhotos.length){ box.innerHTML='<p class="note">No photos in this project yet.</p>'; }
+  else{
+    box.innerHTML='<div class="ccGrid">'+ccPhotos.map((ph,i)=>
+      `<div class="ccPh${ccPicked.has(ph.id)?" on":""}" data-ccp="${i}"><img src="${esc(ph.thumb||"")}" alt="CompanyCam photo" loading="lazy"></div>`).join("")+'</div>';
+    box.querySelectorAll("[data-ccp]").forEach(el=>el.addEventListener("click",()=>{
+      const id=ccPhotos[Number(el.dataset.ccp)].id;
+      if(ccPicked.has(id)) ccPicked.delete(id); else ccPicked.add(id);
+      ccDrawGrid();
+    }));
+  }
+  const b=$("ccAdd"); if(!b) return;
+  const n=ccPicked.size;
+  b.style.display=n?"":"none"; b.disabled=ccBusy;
+  b.textContent=ccBusy?"Copying photos…":"Add "+n+" photo"+(n===1?"":"s")+" to quote";
+}
+async function ccShowGrid(){
+  const p=$("ccPanel"), proj=builderCc; ccPicked=new Set(); ccPhotos=[];
+  p.innerHTML='<div class="ccTie"><span><b>'+esc(proj.name)+'</b></span><button type="button" id="ccChange">change</button></div>'+
+    '<div id="ccGridBox"><p class="note">Loading photos…</p></div>'+
+    '<button class="btn" id="ccAdd" type="button" style="display:none"></button>'+
+    '<button class="btn ghost" id="ccClose" type="button">Close</button>';
+  $("ccChange").addEventListener("click",()=>ccShowPicker(ccFirstName()));
+  $("ccClose").addEventListener("click",()=>p.classList.remove("open"));
+  $("ccAdd").addEventListener("click",ccAddPicked);
+  try{
+    const d=await ccCall({action:"photos",project_id:proj.id});
+    if(builderCc!==proj||!$("ccGridBox")) return; /* they changed project while it loaded */
+    ccPhotos=d.photos||[]; ccDrawGrid();
+  }catch(err){ if($("ccGridBox")) $("ccGridBox").innerHTML='<p class="note">'+esc(err.message)+'</p>'; }
+}
+async function ccAddPicked(){
+  if(ccBusy||!ccPicked.size) return;
+  ccBusy=true;
+  const ids=[...ccPicked]; /* tap order — the first photo you tap is the cover if the quote has none yet */
+  if(!editingQuote && !pendingQuoteId) pendingQuoteId=crypto.randomUUID();
+  const qid=editingQuote?editingQuote.id:pendingQuoteId;
+  ccDrawGrid();
+  toast("Copying "+ids.length+" photo"+(ids.length>1?"s":"")+" from CompanyCam…");
+  try{
+    const d=await ccCall({action:"copy",quote_id:qid,photo_ids:ids});
+    const urls=d.urls||[];
+    if(!urls.length) throw new Error((d.failed&&d.failed[0]&&d.failed[0].error)||"no photos could be copied");
+    builderPhotos.push(...urls);
+    if(editingQuote){ /* edit mode persists immediately — same as iPad photos */
+      const {error}=await db.from("quotes").update({photos:builderPhotos}).eq("id",editingQuote.id);
+      if(error) throw error;
+      const q=quotesCache.find(x=>x.id===editingQuote.id); if(q) q.photos=[...builderPhotos];
+    }
+    renderBPhotos();
+    ccPicked=new Set();
+    const nf=(d.failed||[]).length;
+    toast(builderPhotos.length+" photo"+(builderPhotos.length!==1?"s":"")+" on this quote"+(nf?" — "+nf+" could not be copied, try again":" — first is the cover"));
+  }catch(err){ toast("CompanyCam copy failed: "+(err.message||"unknown error")); }
+  ccBusy=false; ccDrawGrid();
+}
+$("ccBtn").addEventListener("click",ccOpen);
 
 /* ============ BUILD 7 (v8.5) — THE ROAD ============
    Zones (D1 locked July 13) + Schedule screen + piggyback nudge + reminder.
