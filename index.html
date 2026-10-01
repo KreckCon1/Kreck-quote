@@ -448,6 +448,26 @@
   .pvCancelForm .fl>div{flex:1}
   .pvCancelForm .sl2{border-bottom:1.5px solid #000;height:24px}
   .pvCancelForm .lb2{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#6b6255;margin-top:3px}
+  /* v9.6.1 "Tier panels": the Your Options page draws each roofing tier as its own panel with a colored header strip,
+     an added-at-this-level list (pulled from TIER_MATRIX, so nothing new is claimed) and the verified narrative below. */
+  .pvTierPanel{border:1.5px solid #d9d2c4;border-radius:10px;margin:0 0 12px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
+  .pvTierPanel .strip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;color:#fff}
+  .pvTierPanel .strip .tl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .pvTierPanel .strip .tier{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;opacity:.85}
+  .pvTierPanel .strip .pkg{font-size:15px;font-weight:800}
+  .pvTierPanel .strip .tag{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;background:rgba(255,255,255,.22);padding:2px 8px;border-radius:20px}
+  .pvTierPanel .strip .pr{font-size:17px;font-weight:800;white-space:nowrap}
+  .pvTierPanel.Good .strip{background:#6f6a61}
+  .pvTierPanel.Better .strip{background:var(--orange)}
+  .pvTierPanel.Best .strip{background:#151310}
+  .pvTierPanel.Better{border-color:var(--orange);border-width:2px}
+  .pvTierPanel .body{display:flex;gap:16px;padding:11px 14px 12px;align-items:flex-start}
+  .pvTierPanel .adds{flex:0 0 42%;min-width:0}
+  .pvTierPanel .adds .ah{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:#7a7265;margin-bottom:5px}
+  .pvTierPanel .adds ul{margin:0;padding-left:16px;font-size:11.5px;line-height:1.5}
+  .pvTierPanel .adds li{margin-bottom:2px}
+  .pvTierPanel .narr{flex:1;font-size:11px;line-height:1.55;color:#3a362f}
+  .pvTierPanel .fit{font-size:11px;font-weight:700;color:var(--orange-deep);margin-bottom:5px}
   .pvMatrix{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:14px}
   .pvMatrix th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:6px;border-bottom:2px solid #151310;text-align:center}
   .pvMatrix th:first-child{text-align:left}
@@ -561,7 +581,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.6 — Edit Contact</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.6.1 — Tier Panels</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -1923,6 +1943,26 @@ const TIER_MATRIX = [
   {r:"Year-two roof health check", Good:0, Better:0, Best:1},
   {r:"Kreck Platinum owner's package", Good:0, Better:0, Best:1}
 ];
+/* v9.6.1: one-line "who it's for" per roofing tier (layout copy only - every product claim comes from TIER_MATRIX / TIER_NARRATIVE) */
+const TIER_FIT = {
+  Good:"A complete, professionally installed roof at the sharpest price.",
+  Better:"The most popular choice: a matched Owens Corning system with the registered 50-year warranty.",
+  Best:"The top level of protection: lifetime manufacturer-backed workmanship coverage."
+};
+/* what each tier adds over the one below it, read straight from the comparison table */
+function tierAdds(tier){
+  const order=["Good","Better","Best"], i=order.indexOf(tier), prev=i>0?order[i-1]:null;
+  const strip=t=>String(t).replace(/&amp;/g,"&");
+  const out=[];
+  TIER_MATRIX.forEach(r=>{
+    const v=r[tier], pv=prev?r[prev]:null;
+    if(v===0||v==null) return;
+    if(!prev){ if(v===1) out.push(strip(r.r)); else out.push(strip(r.r)+": "+v); return; }
+    if(pv===0||pv==null){ out.push(v===1?strip(r.r):strip(r.r)+": "+v); }
+    else if(v!==pv && v!==1){ out.push(strip(r.r)+": "+v); }
+  });
+  return out;
+}
 const TIER_MATRIX_NOTE = `¹ Limited lifetime per Owens Corning® warranty terms; coverage reduces after 25 years based on the age of the roof. See actual warranties for complete details, limitations and requirements.`;
 
 /* ============ BUILD 3 PART 2 — SCOPE SPEC (per-package named products + exclusions) ============
@@ -2298,9 +2338,23 @@ function showPreview(m, capture){
     <tr class="inv"><td>Investment</td>${tiersP.map(o=>`<td class="${o.tier==="Better"?"hot":""}">${fmt(o.total)}</td>`).join("")}</tr>
     </table>
     <div style="font-size:9px;color:#7a7265;margin-top:6px">${TIER_MATRIX_NOTE}</div>`:"";
-  const narrFor = (list, roof) => list.map(o=>{
+  const narrFor = (list, roof) => (roof?[...list].sort((a,b)=>{const k=o=>{const i=tierOrder.indexOf(o.tier);return i<0?99:i;};return k(a)-k(b);}):list).map(o=>{
     const txt = (roof?TIER_NARRATIVE[o.tier]:null)||TIER_BLURBS[o.tier]||"";
-    return txt?`<div style="margin-bottom:12px"><div style="font-weight:800;font-size:14px;color:var(--orange-deep);margin-bottom:3px">${o.name||o.label}</div><div style="font-size:12px;line-height:1.6">${txt}</div></div>`:"";
+    if(!txt) return "";
+    if(roof && tierOrder.includes(o.tier)){
+      /* v9.6.1: roofing tiers draw as panels so Good / Better / Best read apart at a glance */
+      const prevTier = tierOrder[tierOrder.indexOf(o.tier)-1];
+      const adds = tierAdds(o.tier);
+      const tag = o.tier==="Better"?"Most popular":o.tier==="Best"?"Platinum":"";
+      return `<div class="pvTierPanel ${o.tier}">
+        <div class="strip"><div class="tl"><span class="tier">${o.tier}</span><span class="pkg">${esc(o.name||o.label||"")}</span>${tag?`<span class="tag">${tag}</span>`:""}</div><div class="pr">${fmt(o.total)}</div></div>
+        <div class="body">
+          <div class="adds"><div class="ah">${prevTier?"Everything in "+prevTier+", plus":"What's included"}</div><ul>${adds.map(a=>`<li>${esc(a)}</li>`).join("")}</ul></div>
+          <div class="narr">${TIER_FIT[o.tier]?`<div class="fit">${esc(TIER_FIT[o.tier])}</div>`:""}${txt}</div>
+        </div>
+      </div>`;
+    }
+    return `<div style="margin-bottom:12px"><div style="font-weight:800;font-size:14px;color:var(--orange-deep);margin-bottom:3px">${o.name||o.label}</div><div style="font-size:12px;line-height:1.6">${txt}</div></div>`;
   }).join("");
   let optionsPage = "";
   if(tradeGroups){
