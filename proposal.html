@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Your Proposal — Kreck Contracting · v5</title>
+<title>Your Proposal — Kreck Contracting · v5.1</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -211,6 +211,20 @@
     border-radius:14px;padding:20px;color:#153d22}
   .signedBanner .hd{font-size:18px;font-weight:800;color:var(--ok);margin-bottom:6px}
   .signedBanner .dt{font-size:14px;line-height:1.6}
+  /* v4.2 "Signature page": on a signed proposal the chosen option is marked in the document and a signature block is
+     drawn at the end (web and PDF). Everything on it comes from the saved record, so already-signed links show it too. */
+  .sigBlock{max-width:760px;margin:26px auto 0;background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:22px 22px 18px}
+  .sigBlock .hd{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#7a7265;margin-bottom:10px}
+  .sigBlock .ttl{font-size:20px;font-weight:800;margin-bottom:12px}
+  .sigBlock table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:14px}
+  .sigBlock td{padding:7px 0;border-bottom:1px solid #e5dfd4;vertical-align:top}
+  .sigBlock td:first-child{width:38%;color:#7a7265;font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;padding-right:12px}
+  .sigBlock .sig{font-family:"Snell Roundhand","Brush Script MT","Segoe Script",cursive;font-style:italic;font-size:30px;line-height:1.2;padding:8px 0 2px;border-bottom:2px solid var(--ink);margin:4px 0 6px}
+  .sigBlock .sigNote{font-size:11px;color:#7a7265;margin-bottom:14px}
+  .sigBlock .consent{display:flex;gap:10px;align-items:flex-start;background:#f6f2ea;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.55;color:#3a362f}
+  .sigBlock .consent .bx{flex:none;width:20px;height:20px;border:2px solid var(--ok);border-radius:4px;background:var(--ok);color:#fff;font-size:14px;font-weight:800;text-align:center;line-height:18px}
+  .sigBlock .ref{font-size:10.5px;color:#8a8478;margin-top:12px;word-break:break-all}
+  @media print{ .sigBlock{break-inside:avoid;page-break-inside:avoid} }
   .wrapPad{padding:0 28px}
   @media (max-width:640px){ .wrapPad{padding:0 16px} }
 </style>
@@ -225,6 +239,7 @@
 
 <div class="wrapPad"><div id="signedTop"></div></div>
 <div id="doc" class="pvPage" style="display:none"></div>
+<div class="wrapPad"><div id="signedEnd"></div></div>
 <div id="signWrap" style="display:none">
   <div class="signCard">
     <h2>Accept &amp; Sign</h2>
@@ -256,7 +271,7 @@
   <button id="barBtn">Review &amp; Sign</button>
 </div>
 
-<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.1</div>
+<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.2</div>
 
 <script>
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
@@ -331,6 +346,54 @@ function renderSignedBanner(name, option, price, when){
     <div class="dt">Signed by <b>${name}</b>${d ? " on " + d : ""}.<br>
     Selected: <b>${option}</b> — <b>${fmt(price)}</b>.<br>
     Kreck Contracting has been notified and will be in touch to schedule your project. You can keep this link to review your proposal any time.</div>
+  </div>`;
+}
+
+/* v4.2: on a signed link, mark the accepted option(s) in the document and draw the signature block at the end.
+   The server returns selected_option as text, so cards are matched by their name/label inside that text. */
+function markSignedCards(selectedText){
+  const txt = String(selectedText || "").toLowerCase();
+  if(!txt) return;
+  document.querySelectorAll("#doc .pvOptCard").forEach((card, i) => {
+    if(i >= docOpts.length) return;
+    const o = docOpts[i];
+    const names = [o.name, o.label].filter(Boolean).map(x => String(x).toLowerCase());
+    const picked = names.some(n => n && txt.includes(n));
+    if(!picked) return;
+    card.classList.add("picked");
+    const ck = card.querySelector(".ck");
+    if(ck){ const t = ck.childNodes[ck.childNodes.length-1]; if(t) t.textContent = " Accepted"; }
+  });
+}
+function renderSignatureBlock(data){
+  const name = data.signed_name || "";
+  const when = data.signed_at ? new Date(data.signed_at) : null;
+  const dateStr = when ? when.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}) : "";
+  const timeStr = when ? when.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZoneName:"short"}) : "";
+  const e = t => String(t == null ? "" : t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const rows = [];
+  rows.push(["Accepted by", e(name)]);
+  rows.push(["Date signed", e(dateStr) + (timeStr ? " at " + e(timeStr) : "")]);
+  if(data.selected_option) rows.push(["Option accepted", e(data.selected_option)]);
+  if(data.selected_price != null && data.selected_price !== "") rows.push(["Contract price", e(fmt(data.selected_price))]);
+  if(data.quote_number) rows.push(["Proposal", e(data.quote_number)]);
+  if(data.job_type) rows.push(["Project", e(data.job_type)]);
+  /* customer's own entries, when the server sends them (shown only if present) */
+  const ci = data.customer_inputs || data.customer || data.inputs || null;
+  if(ci && typeof ci === "object"){
+    const lab = {color:"Color / style", trim:"Trim / accent", other:"Other", comments:"Comments"};
+    Object.keys(lab).forEach(k => { if(ci[k]) rows.push([lab[k], e(ci[k])]); });
+  }
+  const consent = document.querySelector("#signWrap .consentRow .tx");
+  const consentText = consent ? consent.innerHTML : "";
+  $("signedEnd").innerHTML = `<div class="sigBlock">
+    <div class="hd">Acceptance &amp; electronic signature</div>
+    <div class="ttl">Signed and accepted</div>
+    <table>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>
+    <div class="sig">${e(name)}</div>
+    <div class="sigNote">Electronic signature — typed by the customer on the secure proposal page${dateStr ? " on " + e(dateStr) : ""}.</div>
+    <div class="consent"><div class="bx">✓</div><div>${consentText}</div></div>
+    <div class="ref">Record: ${e(location.href.split("#")[0])}</div>
   </div>`;
 }
 
@@ -498,6 +561,8 @@ async function doSign(){
     $("signErr").textContent = msg;
     if(data.error === "already_signed"){
       renderSignedBanner(data.signed_name, data.selected_option, data.selected_price, data.signed_at);
+      markSignedCards(data.selected_option);
+      renderSignatureBlock(Object.assign({quote_number: shareData.quote_number, job_type: shareData.job_type}, data));
       $("signWrap").style.display = "none";
       $("bar").style.display = "none";
       window.scrollTo({top:0, behavior:"smooth"});
@@ -508,6 +573,8 @@ async function doSign(){
   }
   // success
   renderSignedBanner(data.signed_name, data.selected_option, data.selected_price, data.signed_at);
+  markSignedCards(data.selected_option);
+  renderSignatureBlock(Object.assign({quote_number: shareData.quote_number, job_type: shareData.job_type}, data));
   kickSignedCopy();
   $("signWrap").style.display = "none";
   $("bar").style.display = "none";
@@ -556,6 +623,8 @@ async function kickSignedCopy(){
 
   if(data.signed_at){
     renderSignedBanner(data.signed_name, data.selected_option, data.selected_price, data.signed_at);
+    markSignedCards(data.selected_option);
+    renderSignatureBlock(data);
   } else {
     $("signWrap").style.display = "block";
     $("bar").style.display = "flex";
