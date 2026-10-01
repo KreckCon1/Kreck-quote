@@ -283,6 +283,10 @@
   /* Build 12 (v9.5) "Preview & Send": every quote send now opens the exact page the customer will get, with a bottom bar of "Looks right"
      buttons; nothing is saved as a link and nothing goes out until one is tapped. Quotes go by email (Resend, through the dynamic-action
      function, BCC to Ti and Chris) and/or text (opens Messages, Ti taps Send). New Save & Send button in the bottom bar saves, then runs the same gate. */
+  /* Build 12 (v9.6) "Edit Contact": (1) quoting from a lead now saves the name / phone / email typed on the quote screen to the customer
+     record (it used to be dropped, so the email button never appeared); (2) the Preview screen shows the customer's email with Fix email /
+     Add email, saved straight to the customer; (3) every lead has an Edit contact button (name, phone, email, street, city) with a duplicate
+     warning. Needs signal - edits are not queued. A changed city clears the stored zone so it is worked out again from the new city. */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -364,7 +368,23 @@
   #pvSendBar button{padding:13px 18px;border:none;border-radius:9px;font-weight:800;font-size:15px;cursor:pointer;background:#3a352e;color:#fff}
   #pvSendBar button.pvGo{background:var(--ok)}
   #pvSendBar button.pvGo.main{background:var(--orange)}
-  #pvOverlay.confirming .pvPage{padding-bottom:170px}
+  #pvOverlay.confirming .pvPage{padding-bottom:240px}
+  #pvSendBar .pvGoEmail{font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  #pvSendBar .pvGoEmail.none b{color:#ffb4a8}
+  #pvSendBar .pvGoEmail button,#pvSendBar .pvEdRow button{padding:9px 14px;font-size:14px}
+  #pvSendBar .pvEdRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  #pvSendBar .pvEdRow input{flex:1;min-width:200px;margin:0;font-size:16px}
+  #pvSendBar .pvEdErr{color:#ffb4a8;font-size:13px;margin-bottom:6px}
+  #leOverlay{display:none;position:fixed;inset:0;background:var(--paper);z-index:120;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #leOverlay.on{display:block}
+  #leOverlay .leBox{max-width:640px;margin:0 auto;padding:18px 16px 140px}
+  #leOverlay h3{margin:6px 0 4px;font-size:20px}
+  #leOverlay .leWarn{background:#fdecea;border:2px solid #c62828;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px;color:#7a1414}
+  #leOverlay .leMsg{margin-top:12px;font-size:14px;font-weight:700;color:#b84e08}
+  #leOverlay .leBar{position:fixed;left:0;right:0;bottom:0;background:var(--tape);border-top:3px solid var(--orange);display:flex;gap:10px;justify-content:flex-end;padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+  #leOverlay .leBar button{padding:13px 22px;border:none;border-radius:9px;font-weight:800;font-size:15px;cursor:pointer;color:#fff;background:#3a352e}
+  #leOverlay .leBar button#leSave{background:var(--orange)}
+  #leOverlay .leBar button:disabled{background:#5a544b;color:#a49b8d}
   .pvPage{max-width:760px;margin:0 auto;padding:36px 28px;color:#151310;
     font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
   .pvHead{display:flex;justify-content:space-between;align-items:flex-start;
@@ -482,7 +502,7 @@
   #toast{
     position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-80px);
     background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;
-    font-weight:600;transition:transform .25s;z-index:50;border-left:4px solid var(--orange);
+    font-weight:600;transition:transform .25s;z-index:300;border-left:4px solid var(--orange);
   }
   #toast.show{transform:translateX(-50%) translateY(0)}
   @media (prefers-reduced-motion: reduce){ #toast{transition:none} }
@@ -541,7 +561,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.5 — Preview &amp; Send</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.6 — Edit Contact</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -764,6 +784,26 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
   <div id="pvSendBar"></div>
 </div>
 
+<div id="leOverlay">
+  <div class="leBox">
+    <h3>Edit contact</h3>
+    <div class="note" id="leFor"></div>
+    <div class="row2">
+      <div><label>First name</label><input id="leFirst" autocomplete="off"></div>
+      <div><label>Last name</label><input id="leLast" autocomplete="off"></div>
+    </div>
+    <div class="row2">
+      <div><label>Phone</label><input id="lePhone" type="tel" inputmode="tel"></div>
+      <div><label>Email</label><input id="leEmail" type="email" inputmode="email" autocapitalize="off" autocorrect="off"></div>
+    </div>
+    <label>Street address</label><input id="leAddr" placeholder="Street address">
+    <label>City</label><input id="leCity">
+    <div class="note" style="margin-top:10px">Lead source stays as first recorded. A proposal already sent keeps the details it was sent with; the email always goes to the address saved here.</div>
+    <div id="leWarn"></div>
+    <div class="leMsg" id="leMsg"></div>
+  </div>
+  <div class="leBar"><button id="leCancel" type="button">Cancel</button><button id="leSave" type="button">Save</button></div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -1487,6 +1527,7 @@ function renderLeads(){
         ${qbRow(l.id)}
         ${l.notes?`<div class="dMeta">"${l.notes}"</div>`:""}
         <div class="actRow">
+          <button class="actBtn dark" data-ledit="${l.id}">Edit contact</button>
           ${l.appointment?`<button class="actBtn dark" data-ics="${l.id}">Add to Calendar</button>`:""}
           ${l.status==="Lead"
             ? (lostPromptFor===l.id
@@ -1535,6 +1576,9 @@ function renderLeads(){
     const {error}=await db.from("jobs").update({tags:next}).eq("id",l.id);
     if(error){ toast("Update failed: "+error.message+" — run the Build 7.6 SQL if it mentions tags"); return; }
     l.tags=next; renderLeads();
+  }));
+  document.querySelectorAll("[data-ledit]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation(); openLeadEditor(leadsCache.find(x=>x.id===b.dataset.ledit));
   }));
   document.querySelectorAll("[data-ics]").forEach(b=>b.addEventListener("click",e=>{
     e.stopPropagation(); downloadIcs(leadsCache.find(x=>x.id===b.dataset.ics));
@@ -1594,6 +1638,86 @@ function downloadIcs(l){
   document.body.appendChild(a); a.click(); a.remove();
   toast("Opening calendar event — tap Add");
 }
+/* ============ v9.6 — Edit contact (any lead, any status) ============ */
+let leCur=null, leDupOK=false;
+function openLeadEditor(l){
+  if(!l) return;
+  const cu=l.customers||{};
+  if(!cu.id){ toast("This lead has no customer record to edit"); return; }
+  leCur={job:l, cid:cu.id, orig:{phone:cu.phone||"",last:cu.last_name||"",street:l.street_address||"",city:l.city||""}};
+  leDupOK=false;
+  $("leFor").textContent=(l.job_type||"Lead")+" · source: "+(cu.lead_source||"—");
+  $("leFirst").value=cu.first_name||""; $("leLast").value=cu.last_name||"";
+  $("lePhone").value=cu.phone||""; $("leEmail").value=cu.email||"";
+  $("leAddr").value=l.street_address||cu.street_address||""; $("leCity").value=l.city||cu.city||"";
+  $("leWarn").innerHTML=""; $("leMsg").textContent="";
+  $("leSave").disabled=false; $("leSave").textContent="Save";
+  $("leOverlay").classList.add("on"); $("leOverlay").scrollTop=0;
+}
+function closeLeadEditor(){ $("leOverlay").classList.remove("on"); leCur=null; leDupOK=false; }
+async function saveLeadEdit(){
+  if(!leCur) return;
+  const v=id=>($(id).value||"").trim();
+  const first=v("leFirst"), last=v("leLast"), phone=v("lePhone"), email=v("leEmail"), addr=v("leAddr"), city=v("leCity");
+  const msg=t=>{ $("leMsg").textContent=t; };
+  msg("");
+  if(!first && !last){ msg("Put in a name first."); return; }
+  if(email && !looksLikeEmailC(email)){ msg("That email doesn't look right. Fix it or clear it."); return; }
+  if(navigator.onLine===false){ msg("No signal. Editing needs a connection — try again when you're back online."); return; }
+  const o=leCur.orig;
+  const changed=normPhone(phone)!==normPhone(o.phone) || last.toLowerCase()!==o.last.trim().toLowerCase() || normStreet(addr)!==normStreet(o.street);
+  $("leSave").disabled=true; $("leSave").textContent="Saving…";
+  try{
+    if(changed && !leDupOK){
+      const dup=await findDuplicateCustomer(phone,last,addr,leCur.cid);
+      if(dup){
+        $("leWarn").innerHTML='<div class="leWarn"><b>Heads up — this looks like someone already in the app:</b><br>'+
+          esc(((dup.first_name||"")+" "+(dup.last_name||"")).trim())+(dup.phone?" · "+esc(dup.phone):"")+(dup.street_address?" · "+esc(dup.street_address):"")+
+          '<br>If it is a different person, tap <b>Save anyway</b>.</div>';
+        leDupOK=true; $("leSave").disabled=false; $("leSave").textContent="Save anyway"; return;
+      }
+    }
+    const cf={first_name:first,last_name:last,phone:phone||null,email:email||null,street_address:addr||null,city:city||null};
+    const {error:e1}=await db.from("customers").update(cf).eq("id",leCur.cid);
+    if(e1) throw e1;
+    const jf={street_address:addr||null,city:city||null};
+    const cityChanged=city.trim().toLowerCase()!==o.city.trim().toLowerCase();
+    if(cityChanged) jf.zone=null; /* worked out again from the new city */
+    const {error:e2}=await db.from("jobs").update(jf).eq("id",leCur.job.id);
+    if(e2){ msg("Name, phone and email saved, but the address did not: "+e2.message); $("leSave").disabled=false; $("leSave").textContent="Save"; return; }
+    const cid=leCur.cid, jid=leCur.job.id;
+    /* keep every cached copy in step so nothing shows the old details */
+    const patchRow=l=>{
+      if(l.customers&&l.customers.id===cid) Object.assign(l.customers,{first_name:first,last_name:last,phone:phone||null,email:email||null});
+      if(l.id===jid){ l.street_address=addr||null; l.city=city||null; if(cityChanged) l.zone=null; }
+    };
+    (leadsCache||[]).forEach(patchRow); (schedCache||[]).forEach(patchRow);
+    (quotesCache||[]).forEach(x=>{
+      const j=x.jobs; if(!j) return;
+      if(j.customer_id===cid && j.customers) Object.assign(j.customers,{first_name:first,last_name:last,phone:phone||null,email:email||null});
+      if(x.job_id===jid){ j.street_address=addr||null; j.city=city||null; }
+    });
+    /* a quote form that is open for this person must not later write the OLD details back */
+    const fillContact=()=>{ $("cFirst").value=first; $("cLast").value=last; $("cPhone").value=phone; $("cEmail").value=email; };
+    const fillAddr=()=>{ $("cAddr").value=addr; $("cCity").value=city; };
+    if(pendingLead && pendingLead.customerId===cid){ fillContact(); pendingLead.name=(first+" "+last).trim(); if(pendingLead.jobId===jid) fillAddr(); renderLeadBanner(); }
+    else if(editingQuote && editingQuote.customerId===cid){ fillContact(); if(editingQuote.jobId===jid) fillAddr(); }
+    closeLeadEditor();
+    renderLeads();
+    toast("Contact saved");
+  }catch(err){
+    console.error(err);
+    msg("Couldn't save: "+((err&&err.message)||"unknown error")); $("leSave").disabled=false; $("leSave").textContent=leDupOK?"Save anyway":"Save";
+  }
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  $("leSave").addEventListener("click",saveLeadEdit);
+  $("leCancel").addEventListener("click",closeLeadEditor);
+  ["leFirst","leLast","lePhone","leEmail","leAddr","leCity"].forEach(id=>$(id).addEventListener("input",()=>{
+    if(leDupOK){ leDupOK=false; $("leWarn").innerHTML=""; $("leSave").textContent="Save"; }
+    $("leMsg").textContent="";
+  }));
+});
 function startQuoteFromLead(l){
   if(!l) return;
   builderMood = tclr(l.temperature)+((l.tags&&l.tags.length)?" "+tagNames(l.tags):"");
@@ -2769,7 +2893,7 @@ async function quoteCommit(p, persist){
     if(eCu) console.error("contact update skipped",eCu);
   };
   if(ed){ cust={id:ed.customerId}; if(cust.id) await syncContact(cust.id); }
-  else if(p.lead){ cust={id:p.lead.customerId}; }
+  else if(p.lead){ cust={id:p.lead.customerId}; if(cust.id) await syncContact(cust.id); } /* v9.6: was skipped, so a typed email never reached the customer */
   else if(p.pickedId){ cust={id:p.pickedId}; await syncContact(cust.id); } /* lead_source is NEVER overwritten */
   else{ cust=await createCustomerRow({id:p.ids.cust,first:first,last:last,phone:p.phone,email:p.email,street:p.addr,city:p.city,state:p.state,zip:p.zip,lead_source:p.source}); }
   /* job type reflects every trade with a package across all options */
@@ -3175,12 +3299,10 @@ const looksLikeEmailC = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").tri
 /* v9.5 "Preview & Send": the ONE gate every quote send passes through. It shows the exact frozen page that will be sent
    (the same HTML that goes into the share snapshot) and resolves with the chosen way to send, or null if Ti backs out.
    Nothing is written to the database and nothing leaves the iPad until a "Looks right" button is tapped. */
-function confirmSend(html, cu){
+function confirmSend(html, cu, fixEmail){
   return new Promise(resolve=>{
-    const email=looksLikeEmailC(cu.email)?String(cu.email).trim():"";
-    const phone=(cu.phone||"").replace(/[^0-9+]/g,"");
     const ov=$("pvOverlay"), bar=$("pvSendBar"), photoBtn=$("pvPhotoBtn");
-    let settled=false;
+    let settled=false, editing=false, errMsg="", saving=false;
     const done=v=>{
       if(settled) return; settled=true;
       bar.innerHTML=""; bar.style.display="none"; bar.onclick=null;
@@ -3188,19 +3310,47 @@ function confirmSend(html, cu){
       window.pvConfirmCancel=null; resolve(v);
     };
     const go=(mode,label,main)=>`<button type="button" class="pvGo${main?" main":""}" data-pvgo="${mode}">${label}</button>`;
-    const btns=[];
-    if(email&&phone){ btns.push(go("email","✓ Looks right — email it")); btns.push(go("text","✓ Looks right — text it")); btns.push(go("both","✓ Looks right — email and text",true)); }
-    else if(email) btns.push(go("email","✓ Looks right — email it",true));
-    else if(phone) btns.push(go("text","✓ Looks right — text it",true));
-    else btns.push(go("link","✓ Looks right — copy the link",true));
-    const to=[email,cu.phone].filter(Boolean).map(esc).join(" · ")||"no email or phone on file";
-    bar.innerHTML=`<div class="pvGoWho">Check every page, then send. To: <b>${esc(((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"customer")}</b> — ${to}</div>`+
-      `<div class="pvGoRow"><button type="button" data-pvback="1">← Back</button>${btns.join("")}</div>`;
+    const draw=()=>{
+      const email=looksLikeEmailC(cu.email)?String(cu.email).trim():"";
+      const phone=(cu.phone||"").replace(/[^0-9+]/g,"");
+      const who=esc(((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"customer");
+      const btns=[];
+      if(email&&phone){ btns.push(go("email","✓ Looks right — email it")); btns.push(go("text","✓ Looks right — text it")); btns.push(go("both","✓ Looks right — email and text",true)); }
+      else if(email) btns.push(go("email","✓ Looks right — email it",true));
+      else if(phone) btns.push(go("text","✓ Looks right — text it",true));
+      else btns.push(go("link","✓ Looks right — copy the link",true));
+      let top=`<div class="pvGoWho">Check every page, then send. To: <b>${who}</b> — ${[email,cu.phone].filter(Boolean).map(esc).join(" · ")||"no email or phone on file"}</div>`;
+      if(fixEmail){
+        if(editing){
+          top+=`<div class="pvEdRow"><input id="pvEmailIn" type="email" inputmode="email" autocapitalize="off" autocorrect="off" placeholder="customer@email.com" value="${esc(cu.email||"")}">`+
+            `<button type="button" data-pvemsave="1"${saving?" disabled":""}>${saving?"Saving…":"Save email"}</button><button type="button" data-pvemcancel="1">Cancel</button></div>`+
+            (errMsg?`<div class="pvEdErr">${esc(errMsg)}</div>`:"");
+        }else{
+          top+=`<div class="pvGoEmail${email?"":" none"}">Email: <b>${email?esc(email):"none on file"}</b> <button type="button" data-pvemedit="1">${email?"Fix email":"Add email"}</button></div>`;
+        }
+      }
+      bar.innerHTML=top+(editing?"":`<div class="pvGoRow"><button type="button" data-pvback="1">← Back</button>${btns.join("")}</div>`);
+      if(editing){ const i=$("pvEmailIn"); if(i&&!saving){ i.focus(); } }
+    };
+    const saveEmail=async()=>{
+      const v=($("pvEmailIn").value||"").trim();
+      if(!looksLikeEmailC(v)){ errMsg="That doesn't look like an email address."; draw(); return; }
+      if(navigator.onLine===false){ errMsg="No signal — try again when you're back online."; draw(); return; }
+      saving=true; errMsg=""; draw();
+      try{ await fixEmail(v); cu.email=v; editing=false; toast("Email saved"); }
+      catch(err){ errMsg="Couldn't save: "+((err&&err.message)||"unknown error"); }
+      saving=false; draw();
+    };
     bar.onclick=e=>{
-      const b=e.target.closest("button"); if(!b) return;
-      if(b.dataset.pvgo) done(b.dataset.pvgo); else if(b.dataset.pvback) done(null);
+      const b=e.target.closest("button"); if(!b||b.disabled) return;
+      if(b.dataset.pvgo) done(b.dataset.pvgo);
+      else if(b.dataset.pvback) done(null);
+      else if(b.dataset.pvemedit){ editing=true; errMsg=""; draw(); }
+      else if(b.dataset.pvemcancel){ editing=false; errMsg=""; draw(); }
+      else if(b.dataset.pvemsave) saveEmail();
     };
     window.pvConfirmCancel=()=>done(null);
+    draw();
     $("pvPage").innerHTML=html;
     photoBtn.style.display="none";
     bar.style.display="block";
@@ -3219,7 +3369,15 @@ async function shareQuote(q, btnEl){
       if(!html) throw new Error("could not build the proposal document");
       const cu=q.jobs?.customers||{};
       /* v9.5: preview first. The page shown is the exact html below that gets frozen into the share. */
-      const mode=await confirmSend(html, cu);
+      const custId=q.jobs?.customer_id||q.jobs?.customers?.id||null;
+      const fixEmail=custId?async(v)=>{
+        const {error:ee}=await db.from("customers").update({email:v}).eq("id",custId);
+        if(ee) throw ee;
+        /* keep every cached copy of this customer in step */
+        (quotesCache||[]).forEach(x=>{ if(x.jobs&&x.jobs.customer_id===custId&&x.jobs.customers) x.jobs.customers.email=v; });
+        [leadsCache,schedCache].forEach(arr=>(arr||[]).forEach(l=>{ if(l.customers&&l.customers.id===custId) l.customers.email=v; }));
+      }:null;
+      const mode=await confirmSend(html, cu, fixEmail);
       if(!mode){ toast("Not sent — nothing went out"); restore(); return false; }
       if(btnEl) btnEl.textContent="Sending…";
       /* Build 3 snapshot v2: options carry trade when the quote is trade-sectioned.
