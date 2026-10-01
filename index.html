@@ -191,7 +191,7 @@
     font-variant-numeric:tabular-nums;border-top:3px solid var(--orange);
   }
   #tape .mainRow{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-  #tapePv,#tapeSave{flex:none}
+  #tapePv,#tapeSave,#tapeSend{flex:none}
   #tape .cell{text-align:center}
   #tape .cell .v{font-size:18px;font-weight:800}
   #tape .cell .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#a49b8d}
@@ -201,6 +201,11 @@
     color:#fff;font-size:15px;font-weight:800;letter-spacing:.03em;cursor:pointer;
   }
   #tapeSave:active{background:var(--orange-deep)}
+  #tapeSend{
+    padding:13px 18px;border:none;border-radius:9px;background:var(--ok);
+    color:#fff;font-size:15px;font-weight:800;letter-spacing:.03em;cursor:pointer;
+  }
+  #tapeSend:disabled{background:#5a544b;color:#a49b8d}
   #tapeSave:disabled{background:#5a544b;color:#a49b8d}
   #tapePv{
     padding:13px 16px;border:1.5px solid #6b6255;border-radius:9px;background:transparent;
@@ -275,6 +280,9 @@
      signed contract (Resend, from ti@kreckcontracting.com; the signed link never expires). Signed quotes show who got it, with
      Send signed copy / Text the link. Every job carries a QuickBooks Send / Keep out switch (jobs.qb_sync, default Send) that does
      nothing until QuickBooks is connected in Build 15. All of it degrades quietly if the Build 12 SQL has not been run. */
+  /* Build 12 (v9.5) "Preview & Send": every quote send now opens the exact page the customer will get, with a bottom bar of "Looks right"
+     buttons; nothing is saved as a link and nothing goes out until one is tapped. Quotes go by email (Resend, through the dynamic-action
+     function, BCC to Ti and Chris) and/or text (opens Messages, Ti taps Send). New Save & Send button in the bottom bar saves, then runs the same gate. */
   .zBadge{font-size:11px;font-weight:800;letter-spacing:.05em;border-radius:6px;padding:3px 8px;color:#fff;white-space:nowrap}
   .zBadge.z1{background:#1a56b0}.zBadge.z2{background:#1e7a3c}.zBadge.z3{background:#7b1fa2}
   .zBadge.z4{background:#c62828}.zBadge.z5{background:#b06f1a}.zBadge.z0{background:#6f6a61}
@@ -349,6 +357,14 @@
   .pvBar button{padding:10px 18px;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer}
   .pvBar .pvPrint{background:var(--orange);color:#fff}
   .pvBar .pvClose{background:#3a352e;color:#fff}
+  #pvSendBar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:102;background:var(--ink);color:#fff;
+    border-top:3px solid var(--orange);padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+  #pvSendBar .pvGoWho{font-size:13px;color:#d8d1c4;margin-bottom:8px}
+  #pvSendBar .pvGoRow{display:flex;gap:10px;flex-wrap:wrap}
+  #pvSendBar button{padding:13px 18px;border:none;border-radius:9px;font-weight:800;font-size:15px;cursor:pointer;background:#3a352e;color:#fff}
+  #pvSendBar button.pvGo{background:var(--ok)}
+  #pvSendBar button.pvGo.main{background:var(--orange)}
+  #pvOverlay.confirming .pvPage{padding-bottom:170px}
   .pvPage{max-width:760px;margin:0 auto;padding:36px 28px;color:#151310;
     font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
   .pvHead{display:flex;justify-content:space-between;align-items:flex-start;
@@ -451,6 +467,7 @@
     body.printing header, body.printing nav, body.printing main, body.printing #tape, body.printing #toast{display:none!important}
     #pvOverlay{position:static;overflow:visible}
     .pvBar{display:none!important}
+    #pvSendBar{display:none!important}
     body{padding-bottom:0!important}
   }
   .badge.Good{background:#eef4ee;color:#1e7a3c}
@@ -524,7 +541,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.4 — Your Copy</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.5 — Preview &amp; Send</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -728,6 +745,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <div class="cell"><div class="v" id="tCost">$0</div><div class="k">Your cost</div></div>
     <div class="cell"><div class="v" id="tMargin">—</div><div class="k">Margin</div></div>
     <button id="tapePv" type="button" onclick="try{buildAndShowPreview()}catch(e){alert('Preview error: '+e.message)}">Preview</button>
+    <button id="tapeSend" type="button">Save &amp; Send</button>
     <button id="tapeSave">Save</button>
   </div>
   <div id="tapeSplit">Labor <b>$0</b> · Materials <b>$0</b> · Other <b>$0</b></div>
@@ -743,6 +761,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <button class="pvPrint" id="pvPrint">Print / Save PDF</button>
   </div>
   <div class="pvPage" id="pvPage"></div>
+  <div id="pvSendBar"></div>
 </div>
 
 <div id="toast"></div>
@@ -2328,7 +2347,7 @@ $("pvPhotoInput").addEventListener("change",async e=>{
   if(pvLastModel) showPreview(pvLastModel);
   toast(pvPhotos.length+" photo"+(pvPhotos.length>1?"s":"")+" in proposal — first is the cover");
 });
-$("pvClose").addEventListener("click",()=>$("pvOverlay").classList.remove("on"));
+$("pvClose").addEventListener("click",()=>{ if(window.pvConfirmCancel) window.pvConfirmCancel(); $("pvOverlay").classList.remove("on"); });
 $("pvPrint").addEventListener("click",()=>{
   document.body.classList.add("printing");
   setTimeout(()=>{ window.print(); document.body.classList.remove("printing"); },50);
@@ -2899,7 +2918,7 @@ async function quoteQueued(p, why){
   resetBuilderAfterSave();
   return true;
 }
-async function saveQuote(){
+async function saveQuote(thenSend){
   syncActiveOption();
   const first=$("cFirst").value.trim(), last=$("cLast").value.trim();
   if(!first||!last){ toast("Enter the customer's name first"); return; }
@@ -2908,8 +2927,13 @@ async function saveQuote(){
   const unnamed=filled.flatMap(o=>o.lines).find(l=>l.isCustom && !l.matHandling && !l.name.trim());
   if(unnamed){ toast("Describe your custom charge before saving"); return; }
   if(!editingQuote && !pendingLead && !pickedCustomer && !cSrcSel){ toast("Tap a lead source for this new customer"); return; }
+  if(thenSend){
+    /* v9.5 Save & Send: needs a way to reach the customer and a connection (the preview and the email are built from the saved quote) */
+    if(!looksLikeEmailC($("cEmail").value) && !($("cPhone").value||"").replace(/\D/g,"")){ toast("Add the customer's email or phone number first"); return; }
+    if(navigator.onLine===false){ toast("Save & Send needs signal — tap Save, then send it from Quotes later"); return; }
+  }
   const p=quoteCapture();
-  const btn=$("tapeSave"); btn.disabled=true; btn.textContent="Saving…";
+  const btn=$("tapeSave"); btn.disabled=true; btn.textContent="Saving…"; $("tapeSend").disabled=true;
   try{
     if(navigator.onLine===false){ await quoteQueued(p); }
     else{
@@ -2931,17 +2955,25 @@ async function saveQuote(){
           $("saveMsg").innerHTML="Saved as "+esc(qNum)+" ("+esc(jobType)+(filledN>1?" · "+filledN+" options":"")+") — "+opts+"."+shareNowButton(quote.id);
         }
         resetBuilderAfterSave();
+        if(thenSend){ /* v9.5: straight into the same Preview gate as every other send */
+          const nb=document.querySelector('[data-sharenow="'+quote.id+'"]');
+          if(nb) setTimeout(()=>nb.click(),50);
+        }
       }
     }
   }catch(err){
     console.error(err);
     $("saveMsg").textContent="Save failed: "+(err.message||"unknown error")+". Your quote is still on screen — check the connection and tap Save again.";
   }
-  btn.disabled=false; btn.textContent="Save";
+  btn.disabled=false; btn.textContent="Save"; $("tapeSend").disabled=false;
 }
 $("tapeSave").addEventListener("click",()=>{
   document.activeElement && document.activeElement.blur();
-  setTimeout(saveQuote, 100);
+  setTimeout(()=>saveQuote(), 100);
+});
+$("tapeSend").addEventListener("click",()=>{
+  document.activeElement && document.activeElement.blur();
+  setTimeout(()=>saveQuote(true), 100);
 });
 
 /* ============ QUOTES LIST ============ */
@@ -3139,13 +3171,57 @@ function quoteModel(q){
 /* ============ BUILD 5b — shareQuote(): ONE share pipeline, called from the
    Quotes tab AND the create screen (Part 3). Extracted verbatim from the old
    data-sh closure — behavior byte-identical, just top-level now. ============ */
+const looksLikeEmailC = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
+/* v9.5 "Preview & Send": the ONE gate every quote send passes through. It shows the exact frozen page that will be sent
+   (the same HTML that goes into the share snapshot) and resolves with the chosen way to send, or null if Ti backs out.
+   Nothing is written to the database and nothing leaves the iPad until a "Looks right" button is tapped. */
+function confirmSend(html, cu){
+  return new Promise(resolve=>{
+    const email=looksLikeEmailC(cu.email)?String(cu.email).trim():"";
+    const phone=(cu.phone||"").replace(/[^0-9+]/g,"");
+    const ov=$("pvOverlay"), bar=$("pvSendBar"), photoBtn=$("pvPhotoBtn");
+    let settled=false;
+    const done=v=>{
+      if(settled) return; settled=true;
+      bar.innerHTML=""; bar.style.display="none"; bar.onclick=null;
+      ov.classList.remove("on","confirming"); photoBtn.style.display="";
+      window.pvConfirmCancel=null; resolve(v);
+    };
+    const go=(mode,label,main)=>`<button type="button" class="pvGo${main?" main":""}" data-pvgo="${mode}">${label}</button>`;
+    const btns=[];
+    if(email&&phone){ btns.push(go("email","✓ Looks right — email it")); btns.push(go("text","✓ Looks right — text it")); btns.push(go("both","✓ Looks right — email and text",true)); }
+    else if(email) btns.push(go("email","✓ Looks right — email it",true));
+    else if(phone) btns.push(go("text","✓ Looks right — text it",true));
+    else btns.push(go("link","✓ Looks right — copy the link",true));
+    const to=[email,cu.phone].filter(Boolean).map(esc).join(" · ")||"no email or phone on file";
+    bar.innerHTML=`<div class="pvGoWho">Check every page, then send. To: <b>${esc(((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"customer")}</b> — ${to}</div>`+
+      `<div class="pvGoRow"><button type="button" data-pvback="1">← Back</button>${btns.join("")}</div>`;
+    bar.onclick=e=>{
+      const b=e.target.closest("button"); if(!b) return;
+      if(b.dataset.pvgo) done(b.dataset.pvgo); else if(b.dataset.pvback) done(null);
+    };
+    window.pvConfirmCancel=()=>done(null);
+    $("pvPage").innerHTML=html;
+    photoBtn.style.display="none";
+    bar.style.display="block";
+    ov.classList.add("on","confirming");
+    ov.scrollTop=0; window.scrollTo(0,0);
+  });
+}
 async function shareQuote(q, btnEl){
-    if(btnEl){ btnEl.disabled=true; btnEl.textContent="Building link…"; }
+    const idle="Share to sign";
+    if(btnEl){ btnEl.disabled=true; btnEl.textContent="Building preview…"; }
+    const restore=()=>{ if(btnEl){ btnEl.disabled=false; btnEl.textContent=idle; } };
     try{
       const m=quoteModel(q);
       /* saved photos ride along as hosted URLs; session photos never enter snapshots */
       const html=showPreview(m,true);
       if(!html) throw new Error("could not build the proposal document");
+      const cu=q.jobs?.customers||{};
+      /* v9.5: preview first. The page shown is the exact html below that gets frozen into the share. */
+      const mode=await confirmSend(html, cu);
+      if(!mode){ toast("Not sent — nothing went out"); restore(); return false; }
+      if(btnEl) btnEl.textContent="Sending…";
       /* Build 3 snapshot v2: options carry trade when the quote is trade-sectioned.
          Legacy quotes keep the v1 shape (no trade key) — proposal.html detects by its absence. */
       const optMeta=m.options.map((o,i)=>({
@@ -3160,7 +3236,6 @@ async function shareQuote(q, btnEl){
       const upsells=buildUpsells(q, m);
       const token=[...crypto.getRandomValues(new Uint8Array(24))]
         .map(x=>x.toString(16).padStart(2,"0")).join("");
-      const cu=q.jobs?.customers||{};
       const {error}=await db.from("proposal_shares").insert({
         token:token, quote_id:q.id, quote_number:q.quote_number,
         customer_name:((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"Customer",
@@ -3176,29 +3251,41 @@ async function shareQuote(q, btnEl){
       const phone=(cu.phone||"").replace(/[^0-9+]/g,"");
       const msgBody="Hi "+(cu.first_name||"")+", here's your "+(q.jobs?.job_type||"project")+
         " proposal from Kreck Contracting. Review and sign here: "+link;
-      if(phone){
-        toast("Opening Messages to "+(cu.first_name||"customer")+" — just hit send");
-        location.href="sms:"+phone+"&body="+encodeURIComponent(msgBody);
-      }else if(cu.email){
-        toast("No phone on file — opening email instead");
-        location.href="mailto:"+cu.email
-          +"?subject="+encodeURIComponent("Your proposal from Kreck Contracting")
-          +"&body="+encodeURIComponent(msgBody);
-      }else{
+      let sent=false;
+      if(mode==="email"||mode==="both"){
+        /* the server reads the customer's address from the database and BCCs Ti and Chris */
+        const {data,error:fe}=await db.functions.invoke("dynamic-action",{body:{action:"quote_send",token:token}});
+        if(fe||!data||!data.ok){
+          toast("Email did NOT go out: "+((data&&data.error)||(fe&&fe.message)||(navigator.onLine===false?"no signal":"unknown error"))+" — link copied, nothing marked sent");
+          restore(); return false;
+        }
+        sent=true;
+        toast("Emailed to "+data.sent_to+" — you and Chris got a copy");
+      }
+      if(mode==="text"||mode==="both"){
+        if(phone){
+          sent=true;
+          toast("Opening Messages to "+(cu.first_name||"customer")+" — just hit send");
+          location.href="sms:"+phone+"&body="+encodeURIComponent(msgBody);
+        }else{
+          toast("No phone number on file — link copied instead");
+        }
+      }
+      if(mode==="link"){
+        sent=true;
         toast("No phone or email on this quote — link copied instead");
       }
-      if(q.status==="Draft"){
+      if(sent && q.status==="Draft"){
         const {error:e2}=await db.from("quotes").update({status:"Sent"}).eq("id",q.id);
-        if(!e2){ q.status="Sent"; renderPipeStats(); renderChips(); renderQuoteList(q.id);
-          if(btnEl){ btnEl.disabled=false; btnEl.textContent="Share to sign"; } return true; }
+        if(!e2){ q.status="Sent"; renderPipeStats(); renderChips(); renderQuoteList(q.id); }
       }
     }catch(err){
       console.error(err);
       toast("Share failed: "+(err.message||"unknown error"));
-      if(btnEl){ btnEl.disabled=false; btnEl.textContent="Share to sign"; }
+      restore();
       return false;
     }
-    if(btnEl){ btnEl.disabled=false; btnEl.textContent="Share to sign"; }
+    restore();
     return true;
 }
 function renderQuoteList(openId){
