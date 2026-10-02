@@ -575,6 +575,32 @@
   #pwForm .btns button.go{background:var(--orange);border-color:var(--orange);color:#fff}
   #pwMsg{font-size:13px;margin-top:8px;min-height:18px}
   #pwMsg.bad{color:#8c1f1f}#pwMsg.ok{color:#1e7a3c}
+  /* Build 13 (v9.9) "Change orders": a signed quote gets a + Change order button. The editor is a full-screen overlay
+     (reason, lines, notes). Preview uses the normal customer-view overlay and send bar. Sending freezes the document into
+     change_orders.snapshot and makes the customer link change.html?t=... Nothing on the original contract changes. */
+  #coOverlay{display:none;position:fixed;inset:0;z-index:95;background:var(--paper,#f5f2ec);overflow:auto;-webkit-overflow-scrolling:touch}
+  #coOverlay.on{display:block}
+  #coOverlay .coWrap{max-width:760px;margin:0 auto;padding:18px 16px calc(120px + env(safe-area-inset-bottom))}
+  #coOverlay h2{font-size:20px;margin:0 0 2px}
+  #coOverlay .coSub{font-size:13px;color:var(--muted);margin-bottom:14px}
+  #coOverlay label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 4px}
+  #coOverlay input,#coOverlay textarea{width:100%;padding:10px;font-size:16px;border:1.5px solid var(--line);border-radius:8px;background:#fff;font-family:inherit}
+  #coOverlay textarea{min-height:70px;resize:vertical}
+  .coLine{display:grid;grid-template-columns:1fr 64px 70px 110px 34px;gap:6px;align-items:center;margin-bottom:6px}
+  .coLine input{padding:9px 8px!important;font-size:15px!important}
+  .coLine .x{border:none;background:none;color:#8c1f1f;font-size:18px;font-weight:800}
+  .coHd{display:grid;grid-template-columns:1fr 64px 70px 110px 34px;gap:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px}
+  .coTot{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:14px;font-size:14px}
+  .coTot div{display:flex;justify-content:space-between;padding:3px 0}
+  .coTot .big{font-weight:800;font-size:17px;border-top:2px solid var(--ink);margin-top:6px;padding-top:8px}
+  #coBar{position:fixed;left:0;right:0;bottom:0;z-index:96;background:var(--ink);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:10px;flex-wrap:wrap}
+  #coOverlay.on ~ #coBar{display:flex}
+  #coBar button{padding:13px 18px;border:none;border-radius:9px;font-weight:800;font-size:15px;background:#3a352e;color:#fff}
+  #coBar button.main{background:var(--orange)}
+  .coList{border-top:1px dashed var(--line,#ddd);padding-top:8px}
+  .coItem{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .coItem .st{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:#eee;color:#555}
+  .coItem .st.signed{background:#e4f1e7;color:#1e7a3c}.coItem .st.sent{background:#fff3e8;color:var(--orange-deep)}.coItem .st.void{background:#eee;color:#888;text-decoration:line-through}
 /* Build 5b hotfix: stop iPad Safari double-tap zoom during rapid tapping */
 button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-action:manipulation}
 </style>
@@ -597,7 +623,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.8 — Change Password</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.9 — Change Orders</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -828,6 +854,24 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
   <div class="pvPage" id="pvPage"></div>
   <div id="pvSendBar"></div>
 </div>
+
+<!-- Build 13 (v9.9): change order editor -->
+<div id="coOverlay"><div class="coWrap">
+  <h2 id="coTitle">Change order</h2>
+  <div class="coSub" id="coSub"></div>
+  <label for="coReason">Reason for the change (the customer reads this)</label>
+  <textarea id="coReason" placeholder="e.g. Rotted sheathing found on the rear slope during tear-off"></textarea>
+  <div class="coHd"><span>Description</span><span>Qty</span><span>Unit</span><span>Price each</span><span></span></div>
+  <div id="coLines"></div>
+  <button type="button" class="copyBtn" id="coAddLine" style="margin-top:4px">+ Add line</button>
+  <div class="note" style="margin-top:6px">A negative price makes a credit. Price is what the customer pays, per unit.</div>
+  <label for="coSched">Schedule effect</label>
+  <input id="coSched" placeholder="e.g. No change · Adds one day · Completion moves to Oct 20">
+  <label for="coPay">Payment</label>
+  <input id="coPay" value="Due with the final payment unless stated otherwise.">
+  <div class="coTot" id="coTot"></div>
+</div></div>
+<div id="coBar"><button type="button" id="coCancel">✕ Cancel</button><button type="button" class="main" id="coPreview">Preview &amp; send</button></div>
 
 <div id="leOverlay">
   <div class="leBox">
@@ -2199,6 +2243,32 @@ const CONTRACT_TERMS = [
  ]}
 ];
 
+function buildCancelPage(st, docWord){
+  docWord = docWord || "this contract";
+/* NOTICE OF CANCELLATION page (16 CFR 429.1(b): two copies, all three states). Shared by proposals and, from v9.9, change orders.
+ v9.7: the dates are NOT fixed here. This HTML is frozen when the proposal is sent, but the clock runs from the day the
+   customer signs (NJ: receives a copy). The <span data-cx-date> and <span data-cx-deadline> slots hold plain words until
+   proposal.html (v4.3) fills them from signed_at. Live builder previews show the same words. */
+const cxDateSlot = `<span data-cx-date>the date you sign ${docWord}</span>`;
+const cxDeadlineSlot = `<span data-cx-deadline>the third business day after ${st==="NJ"?"you receive a copy of ${docWord}":"you sign ${docWord}"}</span>`;
+const cancelForm = copy=>`<div class="pvCancelForm">
+  <div class="ch">NOTICE OF CANCELLATION — ${copy}</div>
+  <div>Date of transaction: <b>${cxDateSlot}</b></div>
+  <p style="margin:8px 0 0">You may cancel this transaction, without any penalty or obligation, within three business days from the above date. If you cancel, any property traded in, any payments made by you under the contract or sale, and any negotiable instrument executed by you will be returned within ten business days following receipt by the seller of your cancellation notice, and any security interest arising out of the transaction will be canceled. If you cancel, you must make available to the seller at your residence, in substantially as good condition as when received, any goods delivered to you under this contract or sale; or you may, if you wish, comply with the instructions of the seller regarding the return shipment of the goods at the seller's expense and risk. If you do make the goods available to the seller and the seller does not pick them up within twenty days of the date of your notice of cancellation, you may retain or dispose of the goods without any further obligation. If you fail to make the goods available to the seller, or if you agree to return the goods to the seller and fail to do so, then you remain liable for performance of all obligations under the contract.</p>
+  <p style="margin:8px 0 0">To cancel this transaction, mail or deliver a signed and dated copy of this cancellation notice or any other written notice to <b>${CO_ADDR}</b> not later than midnight of <b>${cxDeadlineSlot}</b>.${st==="NJ"?` <b>New Jersey:</b> send it by registered or certified mail, return receipt requested, or deliver it in person.`:""}${st==="PA"?` <b>Pennsylvania:</b> you may also cancel by telephone (${CO_PHONE}) or email.`:""}</p>
+  <p style="margin:10px 0 0;font-weight:700">I hereby cancel this transaction.</p>
+  <div class="fl"><div><div class="sl2"></div><div class="lb2">Buyer's signature</div></div>
+  <div><div class="sl2"></div><div class="lb2">Date</div></div></div>
+</div>`;
+const cancelPage=`<div class="pgBrk">
+  <div class="pvTitle">Notice of Cancellation</div>
+  <div class="pvSub">You are entitled to two copies of this form. Keep both — use either one if you decide to cancel. Business days are every day except Sunday and federal holidays.</div>
+  ${cancelForm("COPY 1")}${cancelForm("COPY 2")}
+</div>`;
+
+  return cancelPage;
+}
+
 let pvPhotos = [];
 /* v9.7: business day per 16 CFR 429.0(f) = any day except Sunday or a federal holiday. Saturday COUNTS. (The old version
    skipped Saturday and ignored holidays, which pushed the printed deadline out by a day on most weeks.) Keep in step with
@@ -2491,26 +2561,7 @@ function showPreview(m, capture){
     Thank you for the opportunity to earn your business — we build outside the box, and we stand behind every job.
   </div>`;
 
-  /* FINAL PAGE — NOTICE OF CANCELLATION (16 CFR 429.1(b): two copies, all three states).
-     v9.7: the dates are NOT fixed here. This HTML is frozen when the proposal is sent, but the clock runs from the day the
-     customer signs (NJ: receives a copy). The <span data-cx-date> and <span data-cx-deadline> slots hold plain words until
-     proposal.html (v4.3) fills them from signed_at. Live builder previews show the same words. */
-  const cxDateSlot = `<span data-cx-date>the date you sign this contract</span>`;
-  const cxDeadlineSlot = `<span data-cx-deadline>the third business day after ${st==="NJ"?"you receive a copy of this contract":"you sign this contract"}</span>`;
-  const cancelForm = copy=>`<div class="pvCancelForm">
-    <div class="ch">NOTICE OF CANCELLATION — ${copy}</div>
-    <div>Date of transaction: <b>${cxDateSlot}</b></div>
-    <p style="margin:8px 0 0">You may cancel this transaction, without any penalty or obligation, within three business days from the above date. If you cancel, any property traded in, any payments made by you under the contract or sale, and any negotiable instrument executed by you will be returned within ten business days following receipt by the seller of your cancellation notice, and any security interest arising out of the transaction will be canceled. If you cancel, you must make available to the seller at your residence, in substantially as good condition as when received, any goods delivered to you under this contract or sale; or you may, if you wish, comply with the instructions of the seller regarding the return shipment of the goods at the seller's expense and risk. If you do make the goods available to the seller and the seller does not pick them up within twenty days of the date of your notice of cancellation, you may retain or dispose of the goods without any further obligation. If you fail to make the goods available to the seller, or if you agree to return the goods to the seller and fail to do so, then you remain liable for performance of all obligations under the contract.</p>
-    <p style="margin:8px 0 0">To cancel this transaction, mail or deliver a signed and dated copy of this cancellation notice or any other written notice to <b>${CO_ADDR}</b> not later than midnight of <b>${cxDeadlineSlot}</b>.${st==="NJ"?` <b>New Jersey:</b> send it by registered or certified mail, return receipt requested, or deliver it in person.`:""}${st==="PA"?` <b>Pennsylvania:</b> you may also cancel by telephone (${CO_PHONE}) or email.`:""}</p>
-    <p style="margin:10px 0 0;font-weight:700">I hereby cancel this transaction.</p>
-    <div class="fl"><div><div class="sl2"></div><div class="lb2">Buyer's signature</div></div>
-    <div><div class="sl2"></div><div class="lb2">Date</div></div></div>
-  </div>`;
-  const cancelPage=`<div class="pgBrk">
-    <div class="pvTitle">Notice of Cancellation</div>
-    <div class="pvSub">You are entitled to two copies of this form. Keep both — use either one if you decide to cancel. Business days are every day except Sunday and federal holidays.</div>
-    ${cancelForm("COPY 1")}${cancelForm("COPY 2")}
-  </div>`;
+  const cancelPage = buildCancelPage(st);
 
   /* Build 5b (D6): decision hub — education page, then Authorization, THEN scope.
      Legal already renders last; the short NY cancel sentence stays glued to the
@@ -3368,6 +3419,7 @@ async function loadQuotes(){
   if(error){ $("qList").innerHTML='<p class="note">Could not load quotes: '+error.message+'</p>'; return; }
   if(!data.length){ $("qList").innerHTML='<p class="note">No quotes yet.</p>'; return; }
   quotesCache = data;
+  kosLoadChangeOrders(); /* v9.9: redraws the open quote when the list arrives */
   renderPipeStats();
   renderChips();
   if(openQuoteId && !quotesCache.find(q=>q.id===openQuoteId)){ toast("That quote is older than the last 50 shown"); openQuoteId=null; }
@@ -3618,6 +3670,7 @@ function renderQuoteList(openId){
         ${costInfo?`<div class="dMeta">${costInfo}</div>`:""}
         ${phasing}${noWarranty}${signedLine}${custSel}${custCom}${voidedLine}
         ${isSigned?scRow(q,cu):""}${qbRow(q.job_id)}
+        ${isSigned&&q.status!=="Voided"?coRow(q):""}
         ${phStrip}
         ${optBlocks}
         ${q.jobs?.outcome==="Lost"?`<div class="dMeta" style="color:#8c1f1f;font-weight:700">Lost${q.jobs.lost_reason?" — "+esc(q.jobs.lost_reason):""}</div>`:q.jobs?.outcome==="Unknown"?`<div class="dMeta" style="color:#6f6a61;font-weight:700">Unknown — never heard back</div>`:""}
@@ -4581,6 +4634,211 @@ function qbRow(jobId){
   return `<div class="dMeta">QuickBooks: <button class="chip ${send?'sel':''}" data-qbtog="${jobId}" data-qbv="1" type="button">Send</button><button class="chip ${!send?'sel':''}" data-qbtog="${jobId}" data-qbv="0" type="button">Keep out</button> <span style="color:var(--muted);font-size:12px">takes effect when QuickBooks is connected</span></div>`;
 }
 function proposalLink(token){ return location.href.split("#")[0].split("?")[0].replace(/index\.html$/,"")+"proposal.html?t="+token; }
+/* ============ Build 13 (v9.9) — Change orders ============
+   A change order is a small signed add-on to a SIGNED contract. It lives in change_orders (its own table), gets its own
+   number (Q-2026-2512-CO1), its own customer link (change.html?t=...), its own e-signature and, in step 4, its own emailed
+   PDF. The original quote, its lines and its signed proposal are never modified. */
+const KOS_CO = {byQuote:{}, loaded:false};
+const CO_SELECT = "id,quote_id,co_number,co_seq,status,reason,lines,change_total,prior_total,new_contract_total,token,sent_at,sent_to,sent_by_name,signed_at,signed_name,copy_sent_at,copy_sent_to,created_at";
+async function kosLoadChangeOrders(){
+  try{
+    const {data,error}=await db.from("change_orders").select(CO_SELECT).order("created_at",{ascending:true}).limit(3000);
+    if(error){ if(!/does not exist/i.test(String(error.message||""))) console.warn("change_orders:",error.message); return; }
+    const by={}; (data||[]).forEach(r=>{ (by[r.quote_id]=by[r.quote_id]||[]).push(r); });
+    KOS_CO.byQuote=by; KOS_CO.loaded=true;
+    try{ if(openQuoteId) renderQuoteList(openQuoteId); }catch(_){}
+  }catch(_){}
+}
+/* Signed change orders so far on a quote (used for the running contract total) */
+function coSignedTotal(qid){ return (KOS_CO.byQuote[qid]||[]).filter(c=>c.status==="signed").reduce((s,c)=>s+Number(c.change_total||0),0); }
+function coRow(q){
+  const list=KOS_CO.byQuote[q.id]||[];
+  const base=location.href.split("#")[0].split("?")[0].replace(/index\.html$/,"");
+  const items=list.map(c=>{
+    const st=c.status==="signed"?"signed":c.status==="void"?"void":"sent";
+    const when=c.signed_at?"signed "+new Date(c.signed_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})+(c.signed_name?" by "+esc(c.signed_name):"")
+             :c.sent_at?"sent "+new Date(c.sent_at).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"";
+    const btns=[];
+    if(c.token&&c.status!=="void") btns.push(`<button class="copyBtn" data-colink="${c.id}" type="button" style="padding:6px 10px;font-size:12px">Copy link</button>`);
+    if(c.status==="sent") btns.push(`<button class="copyBtn" data-covoid="${c.id}" type="button" style="padding:6px 10px;font-size:12px;background:#6f6a61">Void</button>`);
+    return `<div class="coItem"><div><b>${esc(c.co_number)}</b> · ${esc((c.reason||"").slice(0,60))}${(c.reason||"").length>60?"…":""}<div class="dMeta" style="margin:0">${when}</div></div>
+      <div style="text-align:right;white-space:nowrap"><b>${Number(c.change_total)<0?"−":""}${fmt(Math.abs(Number(c.change_total||0)))}</b> <span class="st ${st}">${st}</span><div style="margin-top:4px">${btns.join(" ")}</div></div></div>`;
+  }).join("");
+  const signedSum=coSignedTotal(q.id);
+  const tot=signedSum?`<div class="dMeta" style="margin:6px 0 0">Contract ${fmt(quotePrice(q))} + signed changes ${signedSum<0?"−":""}${fmt(Math.abs(signedSum))} = <b>${fmt(quotePrice(q)+signedSum)}</b></div>`:"";
+  return `<div class="coList">${items||`<div class="dMeta" style="margin:0">No change orders.</div>`}${tot}
+    <div style="margin-top:8px"><button class="copyBtn" data-conew="${q.id}" type="button" style="background:var(--orange)">+ Change order</button></div></div>`;
+}
+/* Who is signing for Kreck: the login email mapped to a name */
+function kosSenderName(){
+  const e=String(currentUserEmail||"").toLowerCase();
+  const map={"ti@kreckcontracting.com":"Ti Kreck","tiana.f@kreckcontracting.com":"Tiana Featherstone","chris.v@kreckcontracting.com":"Chris VanDunk"};
+  if(map[e]) return map[e];
+  const u=e.split("@")[0]||"Kreck Contracting"; return u.split(/[._]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
+}
+let coCur=null;
+function coOpen(q){
+  coCur={q, lines:[{name:"",qty:1,unit:"ea",price:""}]};
+  const cu=q.jobs?.customers||{};
+  $("coTitle").textContent="Change order for "+q.quote_number;
+  $("coSub").textContent=((cu.first_name||"")+" "+(cu.last_name||"")).trim()+" · "+(q.jobs?.job_type||"")+" · contract "+fmt(quotePrice(q)+coSignedTotal(q.id));
+  $("coReason").value=""; $("coSched").value="No change"; $("coPay").value="Due with the final payment unless stated otherwise.";
+  coDrawLines(); $("coOverlay").classList.add("on"); $("coOverlay").scrollTop=0;
+}
+function coClose(){ $("coOverlay").classList.remove("on"); coCur=null; }
+function coReadLines(){
+  if(!coCur) return [];
+  return [...document.querySelectorAll("#coLines .coLine")].map(r=>({
+    name:r.querySelector("[data-f=name]").value.trim(),
+    qty:Number(r.querySelector("[data-f=qty]").value)||0,
+    unit:r.querySelector("[data-f=unit]").value.trim()||"ea",
+    price:Number(r.querySelector("[data-f=price]").value)||0
+  }));
+}
+function coDrawLines(){
+  $("coLines").innerHTML=coCur.lines.map((l,i)=>`<div class="coLine">
+    <input data-f="name" value="${esc(l.name)}" placeholder="What changes">
+    <input data-f="qty" type="number" inputmode="decimal" value="${l.qty}">
+    <input data-f="unit" value="${esc(l.unit)}">
+    <input data-f="price" type="number" inputmode="decimal" step="0.01" value="${l.price===""?"":l.price}" placeholder="0.00">
+    <button type="button" class="x" data-corm="${i}" aria-label="Remove line">✕</button></div>`).join("");
+  coDrawTotals();
+}
+function coTotals(){
+  const lines=coReadLines().filter(l=>l.name);
+  const change=Math.round(lines.reduce((s,l)=>s+l.qty*l.price,0)*100)/100;
+  const prior=Math.round((quotePrice(coCur.q)+coSignedTotal(coCur.q.id))*100)/100;
+  return {lines, change, prior, next:Math.round((prior+change)*100)/100};
+}
+function coDrawTotals(){
+  if(!coCur) return;
+  const t=coTotals();
+  $("coTot").innerHTML=`<div><span>Contract now</span><span>${fmt(t.prior)}</span></div>
+    <div><span>This change</span><span>${t.change<0?"−":""}${fmt(Math.abs(t.change))}</span></div>
+    <div class="big"><span>New contract total</span><span>${fmt(t.next)}</span></div>`;
+}
+$("coLines").addEventListener("input",coDrawTotals);
+$("coLines").addEventListener("click",e=>{
+  const b=e.target.closest("[data-corm]"); if(!b) return;
+  coCur.lines=coReadLines(); coCur.lines.splice(Number(b.dataset.corm),1);
+  if(!coCur.lines.length) coCur.lines.push({name:"",qty:1,unit:"ea",price:""});
+  coDrawLines();
+});
+$("coAddLine").addEventListener("click",()=>{ coCur.lines=coReadLines(); coCur.lines.push({name:"",qty:1,unit:"ea",price:""}); coDrawLines(); const last=document.querySelector("#coLines .coLine:last-child [data-f=name]"); if(last) last.focus(); });
+$("coCancel").addEventListener("click",()=>{ if(coReadLines().some(l=>l.name)&&!confirm("Throw away this change order?")) return; coClose(); });
+
+/* The customer-facing document. Frozen into change_orders.snapshot at send; change.html shows it as-is. */
+function buildChangeOrderHTML(q, co, meta){
+  const cu=q.jobs?.customers||{};
+  const st=jobState(q.jobs?.state), stName=STATE_NAMES[st], cx=cancelNotice(st);
+  const today=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  const name=((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"Customer";
+  const addr=[q.jobs?.street_address,q.jobs?.city?q.jobs.city+", "+stName:""].filter(Boolean).join(", ");
+  const money=v=>(v<0?"−":"")+fmt(Math.abs(v));
+  const rows=co.lines.map(l=>`<tr><td>${esc(l.name)}</td><td>${l.qty} ${esc(l.unit)}</td><td>${money(l.price)}</td><td>${money(Math.round(l.qty*l.price*100)/100)}</td></tr>`).join("");
+  const head=`<div class="pvHead">
+      <div class="pvBrandRow"><img src="assets/logo.png" style="height:122px;width:auto" alt="Kreck Contracting — Build Outside the Box"
+        onerror="var p=this.parentElement;this.remove();var t=p.querySelector('.pvBrand');if(t)t.style.display='block'">
+      <div class="pvBrand" style="display:none">KRECK<span>CONTRACTING</span><span class="tag">BUILD OUTSIDE THE BOX</span></div></div>
+      <div class="pvCo">80 E. Main Street<br>Port Jervis, NY 12771<br>ti@kreckcontracting.com<br>845-667-0586<br>${REG_LINE}</div>
+    </div>`;
+  const body=`${head}
+    <div class="pvTitle">Change Order ${esc(meta.co_number||"")}</div>
+    <div class="pvSub">To contract <b>${esc(q.quote_number)}</b> · ${esc(q.jobs?.job_type||"")} · ${today}</div>
+    <div class="pvBlock"><div class="bh">Customer</div><div style="font-size:14px"><b>${esc(name)}</b>${addr?"<br>"+esc(addr):""}</div></div>
+    <div class="pvBlock"><div class="bh">Reason for this change</div><div style="font-size:14px;line-height:1.55">${esc(co.reason)}</div></div>
+    <div class="pvBlock"><div class="bh">What changes</div>
+      <table class="pvTable"><thead><tr><th>Description</th><th>Qty</th><th>Each</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="pvTable" style="margin-top:8px"><tbody>
+        <tr><td>Contract total before this change</td><td style="text-align:right">${fmt(co.prior)}</td></tr>
+        <tr><td><b>This change</b></td><td style="text-align:right"><b>${money(co.change)}</b></td></tr>
+      </tbody></table>
+      <div class="pvTotal"><span>New contract total</span><span>${fmt(co.next)}</span></div>
+    </div>
+    <div class="pvBlock"><div class="bh">Schedule</div><div style="font-size:14px">${esc(co.sched||"No change")}</div></div>
+    <div class="pvBlock"><div class="bh">Payment</div><div style="font-size:14px">${esc(co.pay||"Due with the final payment unless stated otherwise.")}</div></div>
+    <div class="pvFine" style="margin-top:14px">This change order amends contract ${esc(q.quote_number)} as stated above. Every other term of that contract, including its Contract Terms &amp; Conditions, stays in force. Pricing on this change order is good for 5 days.</div>
+    <div class="pvBlock" style="margin-top:18px"><div class="bh">For Kreck Contracting Corp</div>
+      <div style="font-size:14px">Authorized by <b>${esc(meta.sender||"Kreck Contracting Corp")}</b> on ${today}</div></div>
+    <div class="pvCancelSig">You, the buyer, may cancel this transaction at any time prior to midnight of the third business day after the date of this transaction. See the attached Notice of Cancellation form for an explanation of this right.</div>
+    <div class="pvTermsIntro" style="margin-top:14px"><b class="hd">${cx.head}</b>${cx.text}<br><span style="font-size:.92em">Kreck Contracting Corp &middot; ${REG_LINE}</span></div>
+    ${buildCancelPage(st,"this change order")}`;
+  const tmp=document.createElement("div"); tmp.innerHTML=body;
+  tmp.querySelectorAll(".pgBrk").forEach(el=>{ const h=document.createElement("div"); h.className="pvMiniHead";
+    h.innerHTML=`<span><b>KRECK</b> CONTRACTING <span class="o">·</span> BUILD OUTSIDE THE BOX</span><span>${esc(meta.co_number||"CHANGE ORDER")} · ${today}</span>`; el.prepend(h); });
+  return tmp.innerHTML;
+}
+$("coPreview").addEventListener("click",async ()=>{
+  if(!coCur) return;
+  const q=coCur.q, cu=q.jobs?.customers||{};
+  const t=coTotals();
+  const reason=$("coReason").value.trim();
+  if(!reason){ toast("Write the reason first — the customer reads it"); $("coReason").focus(); return; }
+  if(!t.lines.length){ toast("Add at least one line"); return; }
+  if(t.lines.some(l=>!l.qty)){ toast("Every line needs a quantity"); return; }
+  if(navigator.onLine===false){ toast("No signal — change orders need signal to send"); return; }
+  const co={reason, lines:t.lines, change:t.change, prior:t.prior, next:t.next, sched:$("coSched").value.trim(), pay:$("coPay").value.trim()};
+  const sender=kosSenderName();
+  const nextSeq=(KOS_CO.byQuote[q.id]||[]).length+1;
+  const html=buildChangeOrderHTML(q, co, {co_number:q.quote_number+"-CO"+nextSeq, sender});
+  $("coOverlay").classList.remove("on");
+  const mode=await confirmSend(html, cu, null);
+  if(!mode){ $("coOverlay").classList.add("on"); return; }
+  /* Save as sent: the row gets its number from the database; the snapshot carries the number we previewed, and the
+     numbers only differ if someone else made one for this quote in the last minute, in which case we re-render. */
+  const token=[...crypto.getRandomValues(new Uint8Array(24))].map(x=>x.toString(16).padStart(2,"0")).join("");
+  const row={quote_id:q.id, job_id:q.job_id||null, reason, lines:t.lines, change_total:t.change, prior_total:t.prior, new_contract_total:t.next,
+    schedule_note:co.sched||null, payment_note:co.pay||null, job_state:jobState(q.jobs?.state), status:"sent", token,
+    snapshot:{html, v:1}, expires_at:new Date(Date.now()+30*864e5).toISOString(),
+    sent_by_name:sender, sent_by_email:currentUserEmail||null, sent_at:new Date().toISOString(), created_by:currentUserEmail||null};
+  let saved;
+  try{
+    const {data,error}=await db.from("change_orders").insert(row).select(CO_SELECT).single();
+    if(error) throw error; saved=data;
+    if(saved.co_number!==q.quote_number+"-CO"+nextSeq){
+      const html2=buildChangeOrderHTML(q, co, {co_number:saved.co_number, sender});
+      await db.from("change_orders").update({snapshot:{html:html2,v:1}}).eq("id",saved.id);
+    }
+  }catch(err){ toast("Couldn't save the change order: "+((err&&err.message)||"unknown error")); $("coOverlay").classList.add("on"); return; }
+  (KOS_CO.byQuote[q.id]=KOS_CO.byQuote[q.id]||[]).push(saved);
+  const base=location.href.split("#")[0].split("?")[0].replace(/index\.html$/,"");
+  const link=base+"change.html?t="+token;
+  try{ await navigator.clipboard.writeText(link); }catch(_){}
+  let emailed=false;
+  if(mode==="email"||mode==="both"){
+    try{
+      const {data,error}=await db.functions.invoke("dynamic-action",{body:{action:"co_send",co_id:saved.id}});
+      if(error||!data||!data.ok){
+        const m=(data&&data.error)||(error&&error.message)||"unknown error";
+        toast(/unknown action|not supported|co_send/i.test(m)?"Saved and link copied. Email isn't wired up yet (step 4) — text or paste the link.":"Saved, link copied — email did NOT go out: "+m);
+      } else { emailed=true; toast("Change order emailed to "+data.sent_to); }
+    }catch(e){ toast("Saved and link copied — email didn't go out ("+((e&&e.message)||"no signal")+")"); }
+  }
+  if(mode==="text"||mode==="both"){
+    const phone=(cu.phone||"").replace(/[^0-9+]/g,"");
+    if(phone){ const msg="Hi "+(cu.first_name||"")+", here is change order "+saved.co_number+" from Kreck Contracting for your review and signature: "+link;
+      location.href="sms:"+phone+(/iPhone|iPad|Macintosh/.test(navigator.userAgent)?"&":"?")+"body="+encodeURIComponent(msg); }
+  }
+  if(mode==="link"&&!emailed) toast("Saved — link copied, ready to paste");
+  coCur=null;
+  renderQuoteList(q.id);
+});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest&&e.target.closest("[data-conew],[data-colink],[data-covoid]"); if(!b) return;
+  e.stopPropagation();
+  if(b.dataset.conew){ const q=quotesCache.find(x=>x.id===b.dataset.conew); if(q) coOpen(q); return; }
+  const all=[].concat(...Object.values(KOS_CO.byQuote)); const c=all.find(x=>x.id===(b.dataset.colink||b.dataset.covoid)); if(!c) return;
+  if(b.dataset.colink){
+    const base=location.href.split("#")[0].split("?")[0].replace(/index\.html$/,"");
+    try{ await navigator.clipboard.writeText(base+"change.html?t="+c.token); toast("Link copied"); }catch(_){ toast("Copy blocked — long-press to select instead"); }
+    return;
+  }
+  if(!confirm("Void "+c.co_number+"? The customer's link stops working.")) return;
+  const {error}=await db.from("change_orders").update({status:"void",updated_by:currentUserEmail||null}).eq("id",c.id);
+  if(error){ toast("Couldn't void: "+error.message); return; }
+  c.status="void"; toast(c.co_number+" voided"); renderQuoteList(c.quote_id);
+});
+
 function scRow(q,cu){
   const o=KOS_SC.byQuote[q.id];
   const email=(cu&&cu.email)||"", phone=((cu&&cu.phone)||"").replace(/[^0-9+]/g,"");
