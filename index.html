@@ -450,6 +450,11 @@
   .pvCancelForm .lb2{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#6b6255;margin-top:3px}
   /* v9.6.1 "Tier panels": the Your Options page draws each roofing tier as its own panel with a colored header strip,
      an added-at-this-level list (pulled from TIER_MATRIX, so nothing new is claimed) and the verified narrative below. */
+  /* v9.7 "Cancellation by state": the proposal picks the three-day cancellation notice, the governing-law line and the cover's
+     state name from the job's State field (NY / NJ / PA). Both contractor registration numbers print on every contract. The
+     two-copy Notice of Cancellation form no longer bakes in the day the proposal was SENT - it counts from the day the
+     customer signs, and proposal.html fills the real dates in after signing (v4.3). Business days now skip Sunday and federal
+     holidays only (Saturday counts), per 16 CFR 429.0(f). Wording for NY and PA is proposed, pending attorney review. */
   .pvTierPanel{border:1.5px solid #d9d2c4;border-radius:10px;margin:0 0 12px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
   .pvTierPanel .strip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;color:#fff}
   .pvTierPanel .strip .tl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -581,7 +586,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.6.1 — Tier Panels</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.7 — Cancellation by State</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -2075,7 +2080,30 @@ const COMPARE_US_LINE = `Ask any other bidder to name their products, their warr
 /* ============ CONTRACT TERMS v3 (kreck-contract-terms-v3) — trade-tagged clause library ============
    Each paragraph carries t:[trades]. "all" prints on every contract; otherwise prints only when the
    quote contains that trade. Repair implies Roofing. Rendered sections filter automatically. */
-const NY_CANCEL_NOTICE = `You, the buyer, may cancel this transaction at any time prior to midnight of the <b>third business day</b> after the date of this transaction. See the attached Notice of Cancellation form for an explanation of this right. To cancel, deliver written notice of cancellation to Kreck Contracting Corp, 80 E. Main St, Port Jervis, NY 12771, by a method that allows you to prove notice was given, including certified mail or personal delivery.`;
+/* v9.7: cancellation notice by job state. Ti confirmed both numbers Sep 2026. NJ says print it as "HIC reg.#" and never
+   call it a license; PA calls it a registration too. The NJ text is the state's prescribed "Notice to Consumer" word for word
+   (N.J.S.A. 56:8-151). NY (GBL 771(1)(h)) and PA (73 P.S. 517.7(b)) require a notice but prescribe no wording, so those two
+   are drafted from the statutes and marked for attorney review. */
+const CO_ADDR = `Kreck Contracting Corp, 80 E. Main St, Port Jervis, NY 12771`;
+const CO_PHONE = `845-667-0586`;
+const REG_LINE = `PA HIC #PA170625 &middot; NJ HIC reg.# 13VH11998300`;
+const STATE_NAMES = {NY:"New York", NJ:"New Jersey", PA:"Pennsylvania"};
+function jobState(s){ s=String(s||"").trim().toUpperCase(); return STATE_NAMES[s] ? s : "NY"; }
+function cancelNotice(st){
+  st = jobState(st);
+  if(st==="NJ") return {
+    head:`NOTICE TO CONSUMER &mdash; NEW JERSEY`,
+    text:`<b>YOU MAY CANCEL THIS CONTRACT AT ANY TIME BEFORE MIDNIGHT OF THE THIRD BUSINESS DAY AFTER RECEIVING A COPY OF THIS CONTRACT. IF YOU WISH TO CANCEL THIS CONTRACT, YOU MUST EITHER: SEND A SIGNED AND DATED WRITTEN NOTICE OF CANCELLATION BY REGISTERED OR CERTIFIED MAIL, RETURN RECEIPT REQUESTED; OR PERSONALLY DELIVER A SIGNED AND DATED WRITTEN NOTICE OF CANCELLATION TO: ${CO_ADDR}, ${CO_PHONE}.</b><br><b>If you cancel this contract within the three-day period, you are entitled to a full refund of your money. Refunds must be made within 30 days of the contractor's receipt of the cancellation notice.</b>`
+  };
+  if(st==="PA") return {
+    head:`NOTICE OF RIGHT OF RESCISSION &mdash; PENNSYLVANIA`,
+    text:`You may rescind this home improvement contract without penalty, regardless of where it was signed, within <b>three business days</b> of the date of signing (Pennsylvania Home Improvement Consumer Protection Act, 73 P.S. &sect; 517.7). You may rescind by any method that gives Kreck Contracting Corp actual notice, including telephone (${CO_PHONE}), email, mail or personal delivery to ${CO_ADDR}. Any payment you have made will be refunded within ten business days of your notice. See the attached Notice of Cancellation form.`
+  };
+  return {
+    head:`NOTICE OF CANCELLATION &mdash; NEW YORK`,
+    text:`You, the owner, may cancel this home improvement contract at any time prior to midnight of the <b>third business day</b> after the day you sign it (New York General Business Law &sect; 771). To cancel, give written notice to ${CO_ADDR}. Mailed notice counts as given when it is deposited in a mailbox, properly addressed and postage prepaid; any written notice that shows you do not wish to be bound is sufficient. Any payment you have made will be refunded within ten business days of your notice. See the attached Notice of Cancellation form for an explanation of this right.`
+  };
+}
 
 const CONTRACT_TERMS = [
  {h:"Scope, Schedule &amp; Changes", ps:[
@@ -2143,7 +2171,7 @@ const CONTRACT_TERMS = [
   {t:["all"], x:`4. Contractor not responsible for delays caused by circumstances outside its control, including acts of God, strikes, or material unavailability.`},
   {t:["all"], x:`5. If payment is delayed beyond a scheduled date, Contractor may pause work without penalty or breach pending payment.`},
   {t:["all"], x:`6. Contractor shall furnish lien releases/waivers as payments are received, including from subcontractors as necessary.`},
-  {t:["all"], x:`7. Governed by the laws of the State of New York.`},
+  {t:["all"], x:`7. Governed by the laws of the State of {{STATE}}.`}, /* v9.7: filled from the job's state at render */
   {t:["all"], x:`8. Entire agreement; supersedes all prior understandings. Amendments in writing signed by both parties.`},
   {t:["all"], x:`9. Severability: unenforceable provisions shall be limited or severed without affecting the remainder.`},
   {t:["all"], x:`10. Photos will be provided for verification if Customer cannot be present.`},
@@ -2152,12 +2180,37 @@ const CONTRACT_TERMS = [
 ];
 
 let pvPhotos = [];
-function addBusinessDays(d,n){const x=new Date(d);let a=0;while(a<n){x.setDate(x.getDate()+1);const w=x.getDay();if(w!==0&&w!==6)a++;}return x;}
+/* v9.7: business day per 16 CFR 429.0(f) = any day except Sunday or a federal holiday. Saturday COUNTS. (The old version
+   skipped Saturday and ignored holidays, which pushed the printed deadline out by a day on most weeks.) Keep in step with
+   the copy in proposal.html. */
+function isFederalHoliday(d){
+  const y=d.getFullYear(), m=d.getMonth(), day=d.getDate(), w=d.getDay();
+  const nth=(mon,wk,dow)=>{const f=new Date(y,mon,1);return 1+((7+dow-f.getDay())%7)+(wk-1)*7;};
+  const lastMon=(mon)=>{const l=new Date(y,mon+1,0);return l.getDate()-((7+l.getDay()-1)%7);};
+  const obs=(mon,dd)=>{const h=new Date(y,mon,dd),hw=h.getDay();return hw===6?dd-1:hw===0?dd+1:dd;}; /* Sat->Fri, Sun->Mon */
+  if(m===0 && day===obs(0,1)) return true;                       /* New Year's Day */
+  if(m===0 && day===nth(0,3,1)) return true;                     /* MLK Day, 3rd Mon Jan */
+  if(m===1 && day===nth(1,3,1)) return true;                     /* Presidents' Day, 3rd Mon Feb */
+  if(m===4 && day===lastMon(4)) return true;                     /* Memorial Day, last Mon May */
+  if(m===5 && day===obs(5,19)) return true;                      /* Juneteenth */
+  if(m===6 && day===obs(6,4)) return true;                       /* Independence Day */
+  if(m===8 && day===nth(8,1,1)) return true;                     /* Labor Day, 1st Mon Sep */
+  if(m===9 && day===nth(9,2,1)) return true;                     /* Columbus Day, 2nd Mon Oct */
+  if(m===10 && day===obs(10,11)) return true;                    /* Veterans Day */
+  if(m===10 && day===nth(10,4,4)) return true;                   /* Thanksgiving, 4th Thu Nov */
+  if(m===11 && day===obs(11,25)) return true;                    /* Christmas */
+  if(m===11 && day===31 && w===5 && new Date(y+1,0,1).getDay()===6) return true; /* New Year's observed on Fri Dec 31 */
+  return false;
+}
+function addBusinessDays(d,n){const x=new Date(d);x.setHours(12,0,0,0);let a=0;while(a<n){x.setDate(x.getDate()+1);if(x.getDay()!==0&&!isFederalHoliday(x))a++;}return x;}
 let pvLastModel = null;
 function showPreview(m, capture){
  try{
   if(!capture) pvLastModel = m;
   const today=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  const st = jobState(m.customer && m.customer.state);   /* v9.7: NY / NJ / PA from the job */
+  const stName = STATE_NAMES[st];
+  const cx = cancelNotice(st);
   /* v7.7: saved quote photos (hosted URLs) take priority; session photos
      remain for unsaved builder previews but never enter share snapshots */
   const photoSrc=(m.photos&&m.photos.length)?m.photos:(capture?[]:pvPhotos);
@@ -2170,7 +2223,7 @@ function showPreview(m, capture){
       <div class="pvBrandRow"><img src="assets/logo.png" style="height:122px;width:auto" alt="Kreck Contracting — Build Outside the Box"
         onerror="var p=this.parentElement;this.remove();var t=p.querySelector('.pvBrand');if(t)t.style.display='block'">
       <div class="pvBrand" style="display:none">KRECK<span>CONTRACTING</span><span class="tag">BUILD OUTSIDE THE BOX</span></div></div>
-      <div class="pvCo">80 E. Main Street<br>Port Jervis, NY 12771<br>ti@kreckcontracting.com<br>845-667-0586</div>
+      <div class="pvCo">80 E. Main Street<br>Port Jervis, NY 12771<br>ti@kreckcontracting.com<br>845-667-0586<br>${REG_LINE}</div>
     </div>
     <div class="pvBadgeImgs">
       ${["oc-platinum","tamko-platinum","hardie","catchall","google-5star","choice-2025"].map(b=>`<img src="assets/badge-${b}.png" onerror="this.remove()" alt="">`).join("")}
@@ -2191,7 +2244,7 @@ function showPreview(m, capture){
       </div>
       <div style="border-left:2px solid #fff;padding-left:20px">
         <div class="cn">${m.customer.name.toUpperCase()}</div>
-        <div class="sm">${[m.customer.addr,m.customer.city?m.customer.city+", New York":""].filter(Boolean).join("<br>")}
+        <div class="sm">${[m.customer.addr,m.customer.city?m.customer.city+", "+stName:""].filter(Boolean).join("<br>")}
         ${m.customer.phone?"<br>"+m.customer.phone:""}</div>
       </div>
     </div>`;
@@ -2251,7 +2304,7 @@ function showPreview(m, capture){
         <div class="sl"></div><div class="lb">Trim / accent</div>
         <div class="sl"></div><div class="lb">Other</div></div>
     </div>
-    <div class="pvCancelSig">You, the buyer, may cancel this transaction at any time prior to midnight of the third business day after the date of this transaction. See the attached Notice of Cancellation form for an explanation of this right.</div>
+    <div class="pvCancelSig">You, the buyer, may cancel this transaction at any time prior to midnight of the third business day after the date of this transaction. See the attached Notice of Cancellation form for an explanation of this right.${st==="NJ"?` <span style="font-weight:400">New Jersey customers: see also the Notice to Consumer on the Contract Terms page.</span>`:""}</div>
     <div class="pvSig" style="margin-top:24px">
       <div><div class="sl" style="height:34px"></div><div class="lb">${m.customer.name} — signature</div></div>
       <div><div class="sl" style="height:34px"></div><div class="lb">Date</div></div>
@@ -2404,11 +2457,11 @@ function showPreview(m, capture){
     const vis = s.ps.filter(p=>tOn(p.t));
     if(!vis.length) return "";
     return `<h4>${s.h}</h4>${vis.map((p,i)=>`<p>${s.letter?`<b>${LTRS[i]}.</b> `:""}${p.x}</p>`).join("")}`;
-  }).join("");
+  }).join("").replace(/\{\{STATE\}\}/g, stName); /* v9.7 */
   const terms=`<div class="pgBrk">
     <div class="pvTitle">Contract Terms &amp; Conditions</div>
     <div class="pvSub">These terms are part of your agreement with Kreck Contracting Corp.</div>
-    <div class="pvTermsIntro"><b class="hd">NOTICE OF CANCELLATION — NEW YORK</b>${NY_CANCEL_NOTICE}</div>
+    <div class="pvTermsIntro"><b class="hd">${cx.head}</b>${cx.text}<br><span style="font-size:.92em">Kreck Contracting Corp &middot; ${REG_LINE}</span></div>
     <div class="pvTerms">${termsBody}</div>
   </div>`;
 
@@ -2418,20 +2471,24 @@ function showPreview(m, capture){
     Thank you for the opportunity to earn your business — we build outside the box, and we stand behind every job.
   </div>`;
 
-  /* FINAL PAGE — NOTICE OF CANCELLATION (NY: two copies required) */
-  const cxDeadline = addBusinessDays(new Date(),3).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  /* FINAL PAGE — NOTICE OF CANCELLATION (16 CFR 429.1(b): two copies, all three states).
+     v9.7: the dates are NOT fixed here. This HTML is frozen when the proposal is sent, but the clock runs from the day the
+     customer signs (NJ: receives a copy). The <span data-cx-date> and <span data-cx-deadline> slots hold plain words until
+     proposal.html (v4.3) fills them from signed_at. Live builder previews show the same words. */
+  const cxDateSlot = `<span data-cx-date>the date you sign this contract</span>`;
+  const cxDeadlineSlot = `<span data-cx-deadline>the third business day after ${st==="NJ"?"you receive a copy of this contract":"you sign this contract"}</span>`;
   const cancelForm = copy=>`<div class="pvCancelForm">
     <div class="ch">NOTICE OF CANCELLATION — ${copy}</div>
-    <div>Date of transaction: <b>${today}</b></div>
+    <div>Date of transaction: <b>${cxDateSlot}</b></div>
     <p style="margin:8px 0 0">You may cancel this transaction, without any penalty or obligation, within three business days from the above date. If you cancel, any property traded in, any payments made by you under the contract or sale, and any negotiable instrument executed by you will be returned within ten business days following receipt by the seller of your cancellation notice, and any security interest arising out of the transaction will be canceled. If you cancel, you must make available to the seller at your residence, in substantially as good condition as when received, any goods delivered to you under this contract or sale; or you may, if you wish, comply with the instructions of the seller regarding the return shipment of the goods at the seller's expense and risk. If you do make the goods available to the seller and the seller does not pick them up within twenty days of the date of your notice of cancellation, you may retain or dispose of the goods without any further obligation. If you fail to make the goods available to the seller, or if you agree to return the goods to the seller and fail to do so, then you remain liable for performance of all obligations under the contract.</p>
-    <p style="margin:8px 0 0">To cancel this transaction, mail or deliver a signed and dated copy of this cancellation notice or any other written notice to <b>Kreck Contracting Corp, 80 E. Main St, Port Jervis, NY 12771</b> not later than midnight of <b>${cxDeadline}</b>.</p>
+    <p style="margin:8px 0 0">To cancel this transaction, mail or deliver a signed and dated copy of this cancellation notice or any other written notice to <b>${CO_ADDR}</b> not later than midnight of <b>${cxDeadlineSlot}</b>.${st==="NJ"?` <b>New Jersey:</b> send it by registered or certified mail, return receipt requested, or deliver it in person.`:""}${st==="PA"?` <b>Pennsylvania:</b> you may also cancel by telephone (${CO_PHONE}) or email.`:""}</p>
     <p style="margin:10px 0 0;font-weight:700">I hereby cancel this transaction.</p>
     <div class="fl"><div><div class="sl2"></div><div class="lb2">Buyer's signature</div></div>
     <div><div class="sl2"></div><div class="lb2">Date</div></div></div>
   </div>`;
   const cancelPage=`<div class="pgBrk">
     <div class="pvTitle">Notice of Cancellation</div>
-    <div class="pvSub">New York law entitles you to two copies of this form. Keep both — use either one if you decide to cancel.</div>
+    <div class="pvSub">You are entitled to two copies of this form. Keep both — use either one if you decide to cancel. Business days are every day except Sunday and federal holidays.</div>
     ${cancelForm("COPY 1")}${cancelForm("COPY 2")}
   </div>`;
 
@@ -2544,7 +2601,7 @@ function buildAndShowPreview(){
     jobType:pkgTrades.length>1?pkgTrades.map(tradeName).join(" + "):tradeName(pkgTrades[0]||currentTrade),
     customer:{name:(($("cFirst").value+" "+$("cLast").value).trim()||"Customer"),
       phone:$("cPhone").value.trim(),email:$("cEmail").value.trim(),
-      addr:$("cAddr").value.trim(),city:$("cCity").value.trim()},
+      addr:$("cAddr").value.trim(),city:$("cCity").value.trim(),state:$("cState").value.trim()||"NY"}, /* v9.7 */
     options:filled.map(o=>({label:o.label,tier:o.tier,trade:o.trade||null,
       name:(o.lines.find(l=>l.isPackage)||{}).name||o.label,
       lines:o.lines.map(l=>({name:l.name||"—",qty:l.qty,unit:l.unit,price:l.price})),
@@ -3326,7 +3383,7 @@ function quoteModel(q){
     qNum:q.quote_number,
     jobType:q.jobs?.job_type||"",
     customer:{name:((cu.first_name||"")+" "+(cu.last_name||"")).trim()||"Customer",
-      phone:cu.phone||"",email:cu.email||"",addr:q.jobs?.street_address||"",city:q.jobs?.city||""},
+      phone:cu.phone||"",email:cu.email||"",addr:q.jobs?.street_address||"",city:q.jobs?.city||"",state:q.jobs?.state||"NY"}, /* v9.7 */
     options:(()=>{
       const mult=1+Number(q.markup_pct||0)/100;
       return quoteOptions(q).map(o=>({
