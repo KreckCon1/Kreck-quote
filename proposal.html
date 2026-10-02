@@ -213,6 +213,10 @@
   .signedBanner .dt{font-size:14px;line-height:1.6}
   /* v4.2 "Signature page": on a signed proposal the chosen option is marked in the document and a signature block is
      drawn at the end (web and PDF). Everything on it comes from the saved record, so already-signed links show it too. */
+  /* v4.3 "Cancellation dates": once a proposal is signed, the Notice of Cancellation form's date slots (left as words by
+     index.html v9.7) are filled with the real signing date and the real deadline, and the signature block shows "Cancel by".
+     Deadline = three business days after signing; business day = any day except Sunday or a federal holiday (16 CFR 429.0(f)).
+     Old snapshots without the slots are left alone. */
   .sigBlock{max-width:760px;margin:26px auto 0;background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:22px 22px 18px}
   .sigBlock .hd{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#7a7265;margin-bottom:10px}
   .sigBlock .ttl{font-size:20px;font-weight:800;margin-bottom:12px}
@@ -259,7 +263,7 @@
     <input id="signName" type="text" autocomplete="name" placeholder="First and last name">
     <div class="consentRow">
       <input type="checkbox" id="consentBox">
-      <div class="tx"><b>Electronic signature consent.</b> By checking this box and signing below, I agree to conduct this transaction electronically and that my typed name constitutes my legal signature under the federal E-SIGN Act and New York law. I certify that I am the owner of the project property or have legal authority to approve this work. I agree to pay the total price of my selected option and accept the Kreck Contracting Corp contract terms and conditions and the Notice of Cancellation included in this proposal.</div>
+      <div class="tx"><b>Electronic signature consent.</b> By checking this box and signing below, I agree to conduct this transaction electronically and that my typed name constitutes my legal signature under the federal E-SIGN Act and applicable state law. I certify that I am the owner of the project property or have legal authority to approve this work. I agree to pay the total price of my selected option and accept the Kreck Contracting Corp contract terms and conditions and the Notice of Cancellation included in this proposal.</div>
     </div>
     <button id="signBtn" disabled>Sign &amp; Accept Proposal</button>
     <div id="signErr"></div>
@@ -271,7 +275,7 @@
   <button id="barBtn">Review &amp; Sign</button>
 </div>
 
-<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.2</div>
+<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.3</div>
 
 <script>
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
@@ -365,15 +369,50 @@ function markSignedCards(selectedText){
     if(ck){ const t = ck.childNodes[ck.childNodes.length-1]; if(t) t.textContent = " Accepted"; }
   });
 }
+/* v4.3: business-day math. Same as index.html v9.7 - keep the two copies in step. */
+function isFederalHoliday(d){
+  const y=d.getFullYear(), m=d.getMonth(), day=d.getDate(), w=d.getDay();
+  const nth=(mon,wk,dow)=>{const f=new Date(y,mon,1);return 1+((7+dow-f.getDay())%7)+(wk-1)*7;};
+  const lastMon=(mon)=>{const l=new Date(y,mon+1,0);return l.getDate()-((7+l.getDay()-1)%7);};
+  const obs=(mon,dd)=>{const h=new Date(y,mon,dd),hw=h.getDay();return hw===6?dd-1:hw===0?dd+1:dd;};
+  if(m===0 && day===obs(0,1)) return true;
+  if(m===0 && day===nth(0,3,1)) return true;
+  if(m===1 && day===nth(1,3,1)) return true;
+  if(m===4 && day===lastMon(4)) return true;
+  if(m===5 && day===obs(5,19)) return true;
+  if(m===6 && day===obs(6,4)) return true;
+  if(m===8 && day===nth(8,1,1)) return true;
+  if(m===9 && day===nth(9,2,1)) return true;
+  if(m===10 && day===obs(10,11)) return true;
+  if(m===10 && day===nth(10,4,4)) return true;
+  if(m===11 && day===obs(11,25)) return true;
+  if(m===11 && day===31 && w===5 && new Date(y+1,0,1).getDay()===6) return true;
+  return false;
+}
+function addBusinessDays(d,n){const x=new Date(d);x.setHours(12,0,0,0);let a=0;while(a<n){x.setDate(x.getDate()+1);if(x.getDay()!==0&&!isFederalHoliday(x))a++;}return x;}
+const longDate = d => d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+/* v4.3: write the signing date and cancellation deadline into the frozen Notice of Cancellation form. Returns the deadline
+   (Date) or null when signed_at is missing. Snapshots made before v9.7 have no slots and are left untouched. */
+function fillCancelDates(signedAt){
+  if(!signedAt) return null;
+  const s = new Date(signedAt); if(isNaN(s)) return null;
+  const dl = addBusinessDays(s, 3);
+  document.querySelectorAll("#doc [data-cx-date]").forEach(el => { el.textContent = longDate(s); });
+  document.querySelectorAll("#doc [data-cx-deadline]").forEach(el => { el.textContent = longDate(dl); });
+  return dl;
+}
+
 function renderSignatureBlock(data){
   const name = data.signed_name || "";
   const when = data.signed_at ? new Date(data.signed_at) : null;
+  const cancelBy = fillCancelDates(data.signed_at);
   const dateStr = when ? when.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}) : "";
   const timeStr = when ? when.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZoneName:"short"}) : "";
   const e = t => String(t == null ? "" : t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const rows = [];
   rows.push(["Accepted by", e(name)]);
   rows.push(["Date signed", e(dateStr) + (timeStr ? " at " + e(timeStr) : "")]);
+  if(cancelBy) rows.push(["Cancel by", "Midnight, " + e(longDate(cancelBy)) + " (three business days; see the Notice of Cancellation)"]);
   if(data.selected_option) rows.push(["Option accepted", e(data.selected_option)]);
   if(data.selected_price != null && data.selected_price !== "") rows.push(["Contract price", e(fmt(data.selected_price))]);
   if(data.quote_number) rows.push(["Proposal", e(data.quote_number)]);
