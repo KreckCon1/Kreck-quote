@@ -564,6 +564,17 @@
     display:block;margin:26px auto 6px;padding:10px 18px;font-size:13px;font-weight:600;
     color:var(--muted);background:none;border:1.5px solid var(--line);border-radius:10px;
   }
+  /* Build 13 (v9.8) "Change password": a button beside Sign out opens a two-field form; Save sends the new password to
+     Supabase Auth for the signed-in user. Needs signal. Chris and Tiana use it after their first sign-in. */
+  #pwBtn{display:block;margin:18px auto 0;padding:10px 18px;font-size:13px;font-weight:600;color:var(--muted);background:none;border:1.5px solid var(--line);border-radius:10px}
+  #pwForm{display:none;max-width:360px;margin:12px auto 0;padding:14px;border:1.5px solid var(--line);border-radius:12px;background:#fff}
+  #pwForm label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px}
+  #pwForm input{width:100%;padding:10px;font-size:16px;border:1.5px solid var(--line);border-radius:8px}
+  #pwForm .btns{display:flex;gap:8px;margin-top:12px}
+  #pwForm .btns button{flex:1;padding:10px;font-size:14px;font-weight:700;border-radius:8px;border:1.5px solid var(--line);background:#fff}
+  #pwForm .btns button.go{background:var(--orange);border-color:var(--orange);color:#fff}
+  #pwMsg{font-size:13px;margin-top:8px;min-height:18px}
+  #pwMsg.bad{color:#8c1f1f}#pwMsg.ok{color:#1e7a3c}
 /* Build 5b hotfix: stop iPad Safari double-tap zoom during rapid tapping */
 button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-action:manipulation}
 </style>
@@ -586,7 +597,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.7 — Cancellation by State</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v9.8 — Change Password</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -779,6 +790,15 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <h2>Kreck rate card</h2>
     <div id="rateView"></div>
     <p class="note">Selling prices shown. Cost basis (labor / materials / other) lives inside the app for margin tracking. To change rates, ask Claude for an updated file — two-minute swap.</p>
+    <button id="pwBtn" type="button">Change my password</button>
+    <div id="pwForm">
+      <label for="pwNew">New password (8 characters or more)</label>
+      <input id="pwNew" type="password" autocomplete="new-password">
+      <label for="pwAgain">Type it again</label>
+      <input id="pwAgain" type="password" autocomplete="new-password">
+      <div id="pwMsg"></div>
+      <div class="btns"><button type="button" id="pwCancel">Cancel</button><button type="button" class="go" id="pwSave">Save new password</button></div>
+    </div>
     <button id="signOutBtn" type="button">Sign out of KRECK OS on this device</button>
   </section>
 
@@ -4988,6 +5008,34 @@ async function doSignIn(){
 $("authBtn").addEventListener("click",doSignIn);
 $("authPw").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); doSignIn(); } });
 $("authEmail").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("authPw").focus(); } });
+
+/* Build 13 (v9.8): change password for the signed-in user */
+$("pwBtn").addEventListener("click",()=>{
+  const f=$("pwForm"); const open=f.style.display==="block";
+  f.style.display=open?"none":"block"; $("pwMsg").textContent=""; $("pwMsg").className="";
+  if(!open){ $("pwNew").value=""; $("pwAgain").value=""; $("pwNew").focus(); }
+});
+$("pwCancel").addEventListener("click",()=>{ $("pwForm").style.display="none"; $("pwNew").value=""; $("pwAgain").value=""; });
+$("pwSave").addEventListener("click",async ()=>{
+  const msg=$("pwMsg"), a=$("pwNew").value, b=$("pwAgain").value;
+  const say=(t,cls)=>{ msg.textContent=t; msg.className=cls||""; };
+  if(a.length<8){ say("Use at least 8 characters.","bad"); return; }
+  if(a!==b){ say("The two entries don't match.","bad"); return; }
+  if(navigator.onLine===false){ say("No signal. Get online and try again.","bad"); return; }
+  const btn=$("pwSave"); btn.disabled=true; btn.textContent="Saving…";
+  try{
+    const {error}=await db.auth.updateUser({password:a});
+    if(error) throw error;
+    say("Password changed. Use the new one next time you sign in.","ok");
+    $("pwNew").value=""; $("pwAgain").value="";
+    toast("Password changed");
+    setTimeout(()=>{ $("pwForm").style.display="none"; },2500);
+  }catch(e){
+    const m=String((e&&e.message)||"unknown error");
+    say(/same.*password|different from the old/i.test(m) ? "That's already your password. Pick a new one." : "Couldn't change it: "+m,"bad");
+  }
+  btn.disabled=false; btn.textContent="Save new password";
+});
 
 $("signOutBtn").addEventListener("click",async ()=>{
   const nOut=(typeof KOS_OB!=="undefined"?KOS_OB.items.length:0);
