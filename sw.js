@@ -2,7 +2,7 @@
    Job: let the app OPEN with no signal. It keeps a copy of the app page, the logos, and the database
    library on the iPad. When there is signal the page is always fetched fresh, so a new build shows up
    on the next open exactly as before. The customer proposal page is never touched. */
-const CACHE = "kos-shell-v9.9";
+const CACHE = "kos-shell-v10.0";
 const LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 const PAGE = new URL("index.html", self.location).href;
 const SHELL = [

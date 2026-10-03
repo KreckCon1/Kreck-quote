@@ -578,6 +578,13 @@
   /* Build 13 (v9.9) "Change orders": a signed quote gets a + Change order button. The editor is a full-screen overlay
      (reason, lines, notes). Preview uses the normal customer-view overlay and send bar. Sending freezes the document into
      change_orders.snapshot and makes the customer link change.html?t=... Nothing on the original contract changes. */
+  /* Build 14 (v10.0) "Keys & States": (1) Tab / Shift-Tab / Enter move between boxes on every form (works from the Home
+     Screen icon too, where the iPad's own Tab handling is unreliable); Enter never saves anything. (2) NY / NJ / PA chips on the
+     new-lead and Edit contact forms, saved on the job; quoting from a lead fills the quote's State; leads and quotes show the
+     state next to the city when it isn't NY; the chip guesses from towns already on file. (3) Quotes tab gets a search box. */
+  .stateRow{display:flex;gap:8px;margin:6px 0 2px}
+  .stateBtn{flex:1;padding:10px 0;font-size:15px;font-weight:800;letter-spacing:.04em;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--muted)}
+  .stateBtn.sel{background:var(--ink);border-color:var(--ink);color:#fff}
   #coOverlay{display:none;position:fixed;inset:0;z-index:95;background:var(--paper,#f5f2ec);overflow:auto;-webkit-overflow-scrolling:touch}
   #coOverlay.on{display:block}
   #coOverlay .coWrap{max-width:760px;margin:0 auto;padding:18px 16px calc(120px + env(safe-area-inset-bottom))}
@@ -623,7 +630,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v9.9 — Change Orders</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v10.0 — Keys &amp; States</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -654,9 +661,13 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
       <label>Address</label><input id="lAddr" placeholder="Street address">
       <div class="row2">
         <div><label>City</label><input id="lCity"></div>
+        <div><label>State</label><div class="stateRow" id="lStateRow"><button type="button" class="stateBtn sel" data-st="NY">NY</button><button type="button" class="stateBtn" data-st="NJ">NJ</button><button type="button" class="stateBtn" data-st="PA">PA</button></div></div>
+      </div>
+      <div class="row2">
         <div><label>Job type</label>
           <select id="lType"><option>Roofing</option><option>Decking</option><option>Siding</option>
           <option>Roof Repair</option><option>Custom</option><option>Other</option></select></div>
+        <div></div>
       </div>
       <label>Lead source — tap one</label>
       <div class="srcChips" id="lSrcChips"></div>
@@ -798,6 +809,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
   <section id="s-list" class="screen">
     <h2>Saved quotes</h2>
     <div class="pipeStats" id="pipeStats"></div>
+    <div class="leadTools"><input id="quoteSearch" placeholder="Search name, city, quote #, phone…"></div>
     <div class="chipRow" id="chipRow"></div>
     <div id="qList"><p class="note">Loading…</p></div>
   </section>
@@ -887,6 +899,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     </div>
     <label>Street address</label><input id="leAddr" placeholder="Street address">
     <label>City</label><input id="leCity">
+    <label>State</label><div class="stateRow" id="leStateRow"><button type="button" class="stateBtn" data-st="NY">NY</button><button type="button" class="stateBtn" data-st="NJ">NJ</button><button type="button" class="stateBtn" data-st="PA">PA</button></div>
     <div class="note" style="margin-top:10px">Lead source stays as first recorded. A proposal already sent keeps the details it was sent with; the email always goes to the address saved here.</div>
     <div id="leWarn"></div>
     <div class="leMsg" id="leMsg"></div>
@@ -1330,6 +1343,14 @@ function showTab(name){ const b=document.querySelector('nav button[data-s="'+nam
 
 /* ============ LEAD SYSTEM ============ */
 let leadTemp = "🟡";
+/* Build 14: job state chips (lead form + edit contact) */
+let leadState="NY";
+function setStateChips(rowId, st){ document.querySelectorAll("#"+rowId+" .stateBtn").forEach(b=>b.classList.toggle("sel",b.dataset.st===st)); }
+function guessStateFromCity(city){
+  const c=String(city||"").trim().toLowerCase(); if(!c) return null;
+  const hit=leadsCache.find(l=>(l.city||"").trim().toLowerCase()===c && l.state && l.state!=="NY") || leadsCache.find(l=>(l.city||"").trim().toLowerCase()===c && l.state);
+  return hit? jobState(hit.state) : null;
+}
 /* Build 7.6: color temperature + tags */
 const TAGS=[{e:"🔥",n:"Hot rush"},{e:"💰",n:"Big job"},{e:"📞",n:"Callback"},{e:"🤝",n:"Referral"},{e:"🔁",n:"Repeat"},{e:"📋",n:"Insurance"},{e:"⏳",n:"Waiting"},{e:"🏘️",n:"Hemlock Farms"},{e:"⚠️",n:"Careful"},{e:"🌶️",n:"Spice pricing"}]; /* Build 8: e = stored key (never shown), n = what the app displays */
 const tclr=t=>({"🙂":"🟢","😐":"🟡","😠":"🔴"}[t]||t||"🟡"); /* legacy faces map to colors */
@@ -1423,6 +1444,7 @@ async function checkLeadDup(now){
 updateLeadSaveState();
 
 function leadResetForm(){
+  leadState="NY"; setStateChips("lStateRow","NY");
   ["lFirst","lLast","lPhone","lEmail","lAddr","lCity","lNote","lAppt","lSourceDetail"].forEach(id=>$(id).value="");
   lSrcSel=null; drawSrcChips();
   resetLeadZoneState(); loadSchedule(); /* Build 7 */
@@ -1481,7 +1503,7 @@ $("saveLead").addEventListener("click", async ()=>{
     const p={
       kind:"lead", first:first, last:last,
       phone:$("lPhone").value.trim(), email:$("lEmail").value.trim(),
-      addr:$("lAddr").value.trim(), city:cityVal,
+      addr:$("lAddr").value.trim(), city:cityVal, state:leadState,
       source:leadUseExisting?null:composeSource(lSrcSel,"lSourceDetail"),
       existingCust:leadUseExisting?JSON.parse(JSON.stringify(leadUseExisting)):null,
       type:$("lType").value, appt:appt, temp:leadTemp, emg:$("lEmg").checked, zone:leadZone,
@@ -1540,7 +1562,7 @@ async function loadLeads(){
   $("leadList").innerHTML='<p class="note">Loading…</p>';
   const statuses = leadFilter==="Open" ? ["Lead"] : leadFilter==="Lost" ? ["Lost"] : leadFilter==="Quoted" ? ["Quoted"] : leadFilter==="Unknown" ? ["Unknown"] : ["Lead","Quoted","Lost","Unknown"];
   const {data,error} = await db.from("jobs")
-    .select("id,job_type,status,appointment,temperature,tags,emergency,notes,created_at,street_address,city,outcome,lost_reason,outcome_at,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
+    .select("id,job_type,status,appointment,temperature,tags,emergency,notes,created_at,street_address,city,state,outcome,lost_reason,outcome_at,customers:customer_id(id,first_name,last_name,phone,email,lead_source)")
     .in("status",statuses).order("created_at",{ascending:false}).limit(500);
   if(error){ $("leadList").innerHTML='<p class="note">Could not load leads: '+error.message+'. If it mentions a missing column, run the wave-two SQL first.</p>'; return; }
   /* Build 8: latest quote per job so the lead row can show "Q-0142 · Sent" */
@@ -1609,7 +1631,7 @@ function renderLeads(){
       const contact=[cu.phone,cu.email].filter(Boolean).join(" · ");
       detail=`<div class="leadDetail">
         ${contact?`<div class="dMeta">${contact}</div>`:""}
-        ${l.street_address?`<div class="dMeta">${l.street_address}${l.city?", "+l.city:""}</div>`:""}
+        ${l.street_address?`<div class="dMeta">${l.street_address}${l.city?", "+l.city:""}${l.state&&l.state!=="NY"?", "+esc(l.state):""}</div>`:""}
         <div class="dMeta">Source: ${cu.lead_source||"—"}${l.emergency?" · 🚨 EMERGENCY":""}${l.outcome==="Lost"?" · Lost"+(l.lost_reason?": "+esc(l.lost_reason):""):l.outcome==="Unknown"?" · Unknown — never heard back":""}</div>
         <div class="dMeta">Temp: ${["🟢","🟡","🔴"].map(t=>`<button class="chip ${tclr(l.temperature)===t?'sel':''}" data-settemp="${t}" data-sid="${l.id}">${t}</button>`).join("")}</div>
         <div class="dMeta">Tags: ${TAGS.map(t=>`<button class="chip ${(l.tags||[]).includes(t.e)?'sel':''}" data-tagtog="${t.e}" data-sid="${l.id}">${t.n}</button>`).join("")}</div>
@@ -1633,7 +1655,7 @@ function renderLeads(){
       : lq ? `<button class="qs" data-jumpq="${lq.id}" type="button">${esc(lq.quote_number)} · ${esc(lq.status)}</button>` : "";
     return `<div class="leadRow ${l.emergency?'emg':''}" data-lead="${l.id}">
       <div style="min-width:0"><div class="who">${l.emergency?"🚨 ":""}${who}${l.status==="Lost"?`<span class="outcomeTag lost">LOST</span>`:l.status==="Unknown"?`<span class="outcomeTag unknown">UNKNOWN</span>`:""}</div>
-      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city:""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+tagNames(l.tags):""}${byTag("jobs",l.id)}</div></div>
+      <div class="meta">${l.job_type||""}${appt?" · "+appt:""}${l.city?" · "+l.city+(l.state&&l.state!=="NY"?", "+esc(l.state):""):""} · ${cu.lead_source||""}${(l.tags&&l.tags.length)?" · "+tagNames(l.tags):""}${byTag("jobs",l.id)}</div></div>
       <div class="rowActs">${rowAct}<div class="temp" data-tcyc="${l.id}" title="Tap to change">${tclr(l.temperature)}</div></div>
     </div>${detail}`;
   }).join("");
@@ -1711,7 +1733,7 @@ function downloadIcs(l){
   const start=new Date(l.appointment);
   const end=new Date(start.getTime()+60*60*1000);
   const who=(cu.first_name||"")+" "+(cu.last_name||"");
-  const loc=[l.street_address,l.city,"NY"].filter(Boolean).join(", ");
+  const loc=[l.street_address,l.city,jobState(l.state)].filter(Boolean).join(", ");
   const desc=[cu.phone?"Phone: "+cu.phone:"",cu.lead_source?"Source: "+cu.lead_source:"",
     "Temp: "+tclr(l.temperature),l.emergency?"🚨 EMERGENCY":"",l.notes||""].filter(Boolean).join("\\n");
   const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KRECK OS//EN","BEGIN:VEVENT",
@@ -1733,7 +1755,8 @@ function openLeadEditor(l){
   if(!l) return;
   const cu=l.customers||{};
   if(!cu.id){ toast("This lead has no customer record to edit"); return; }
-  leCur={job:l, cid:cu.id, orig:{phone:cu.phone||"",last:cu.last_name||"",street:l.street_address||"",city:l.city||""}};
+  leCur={job:l, cid:cu.id, orig:{phone:cu.phone||"",last:cu.last_name||"",street:l.street_address||"",city:l.city||""}, state:jobState(l.state)};
+  setStateChips("leStateRow", leCur.state);
   leDupOK=false;
   $("leFor").textContent=(l.job_type||"Lead")+" · source: "+(cu.lead_source||"—");
   $("leFirst").value=cu.first_name||""; $("leLast").value=cu.last_name||"";
@@ -1766,10 +1789,10 @@ async function saveLeadEdit(){
         leDupOK=true; $("leSave").disabled=false; $("leSave").textContent="Save anyway"; return;
       }
     }
-    const cf={first_name:first,last_name:last,phone:phone||null,email:email||null,street_address:addr||null,city:city||null};
+    const cf={first_name:first,last_name:last,phone:phone||null,email:email||null,street_address:addr||null,city:city||null,state:leCur.state};
     const {error:e1}=await db.from("customers").update(cf).eq("id",leCur.cid);
     if(e1) throw e1;
-    const jf={street_address:addr||null,city:city||null};
+    const jf={street_address:addr||null,city:city||null,state:leCur.state};
     const cityChanged=city.trim().toLowerCase()!==o.city.trim().toLowerCase();
     if(cityChanged) jf.zone=null; /* worked out again from the new city */
     const {error:e2}=await db.from("jobs").update(jf).eq("id",leCur.job.id);
@@ -1778,7 +1801,7 @@ async function saveLeadEdit(){
     /* keep every cached copy in step so nothing shows the old details */
     const patchRow=l=>{
       if(l.customers&&l.customers.id===cid) Object.assign(l.customers,{first_name:first,last_name:last,phone:phone||null,email:email||null});
-      if(l.id===jid){ l.street_address=addr||null; l.city=city||null; if(cityChanged) l.zone=null; }
+      if(l.id===jid){ l.street_address=addr||null; l.city=city||null; l.state=leCur.state; if(cityChanged) l.zone=null; }
     };
     (leadsCache||[]).forEach(patchRow); (schedCache||[]).forEach(patchRow);
     (quotesCache||[]).forEach(x=>{
@@ -1788,7 +1811,7 @@ async function saveLeadEdit(){
     });
     /* a quote form that is open for this person must not later write the OLD details back */
     const fillContact=()=>{ $("cFirst").value=first; $("cLast").value=last; $("cPhone").value=phone; $("cEmail").value=email; };
-    const fillAddr=()=>{ $("cAddr").value=addr; $("cCity").value=city; };
+    const fillAddr=()=>{ $("cAddr").value=addr; $("cCity").value=city; $("cState").value=leCur.state; };
     if(pendingLead && pendingLead.customerId===cid){ fillContact(); pendingLead.name=(first+" "+last).trim(); if(pendingLead.jobId===jid) fillAddr(); renderLeadBanner(); }
     else if(editingQuote && editingQuote.customerId===cid){ fillContact(); if(editingQuote.jobId===jid) fillAddr(); }
     closeLeadEditor();
@@ -1815,7 +1838,7 @@ function startQuoteFromLead(l){
   pendingLead={jobId:l.id, customerId:cu.id, name:(cu.first_name||"")+" "+(cu.last_name||"")};
   $("cFirst").value=cu.first_name||""; $("cLast").value=cu.last_name||"";
   $("cPhone").value=cu.phone||""; $("cEmail").value=cu.email||"";
-  $("cAddr").value=l.street_address||""; $("cCity").value=l.city||"";
+  $("cAddr").value=l.street_address||""; $("cCity").value=l.city||""; $("cState").value=jobState(l.state); /* Build 14 */
   setCustMode("locked", cu.lead_source); /* Build 6: source already on file, never overwritten */
   if(TRADES[l.job_type]) { currentTrade=l.job_type; renderTrades(); renderBuilder(); }
   renderLeadBanner();
@@ -3630,7 +3653,11 @@ async function shareQuote(q, btnEl){
     return true;
 }
 function renderQuoteList(openId){
-  const shown = statusFilter==="All" ? quotesCache : quotesCache.filter(q=>q.status===statusFilter);
+  const qs=($("quoteSearch")?$("quoteSearch").value:"").trim().toLowerCase(); /* Build 14 */
+  const shown = (statusFilter==="All" ? quotesCache : quotesCache.filter(q=>q.status===statusFilter)).filter(q=>{
+    if(!qs) return true; const cu=q.jobs?.customers||{};
+    return ((cu.first_name||"")+" "+(cu.last_name||"")+" "+(q.jobs?.city||"")+" "+(q.quote_number||"")+" "+(cu.phone||"")+" "+(q.jobs?.job_type||"")+" "+(q.jobs?.street_address||"")).toLowerCase().includes(qs);
+  });
   if(!shown.length){ $("qList").innerHTML='<p class="note">No '+(statusFilter==="All"?"":statusFilter.toLowerCase()+" ")+'quotes.</p>'; return; }
   $("qList").innerHTML = shown.map(q=>{
     const priceStr=quotePriceLabel(q);
@@ -4588,11 +4615,11 @@ async function leadCommit(p){
         e.needs=true; e.dupId=dup.id; e.dup=dup; throw e;
       }
     }
-    cust=await createCustomerRow({id:p.ids.cust,first:p.first,last:p.last,phone:p.phone,email:p.email,street:p.addr,city:p.city,state:"NY",zip:null,lead_source:p.source});
+    cust=await createCustomerRow({id:p.ids.cust,first:p.first,last:p.last,phone:p.phone,email:p.email,street:p.addr,city:p.city,state:jobState(p.state),zip:null,lead_source:p.source});
   }
   const job=await insertIdem("jobs",{
     id:p.ids.job,customer_id:cust.id,job_type:p.type,status:"Lead",
-    street_address:p.addr||null,city:p.city||null,state:"NY",
+    street_address:p.addr||null,city:p.city||null,state:jobState(p.state),
     appointment:p.appt,temperature:p.temp,emergency:!!p.emg,
     zone:p.zone,notes:p.note||null
   });
@@ -4994,6 +5021,29 @@ function renderZonePrompt(containerId, city, milford, onPick){
 /* ---- lead form wiring: zone gate + piggyback nudge ---- */
 let pendingLeadZone=null; /* the per-lead answer for Milford/unknown/one-off */
 function resetLeadZoneState(){ pendingLeadZone=null; $("lZonePrompt").innerHTML=""; $("lPiggy").innerHTML=""; }
+/* Build 14: state chips + quote search + keyboard moves */
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest(".stateBtn"); if(!b) return;
+  const row=b.parentElement.id;
+  if(row==="lStateRow"){ leadState=b.dataset.st; setStateChips(row,leadState); }
+  else if(row==="leStateRow" && leCur){ leCur.state=b.dataset.st; setStateChips(row,leCur.state); }
+});
+$("lCity").addEventListener("input",()=>{ const g=guessStateFromCity($("lCity").value); if(g){ leadState=g; setStateChips("lStateRow",g); } });
+$("quoteSearch").addEventListener("input",()=>{ renderQuoteList(openQuoteId); });
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Tab" && e.key!=="Enter") return;
+  const t=e.target; if(!t||!/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+  if(t.closest("#authGate")) return;                       /* sign-in has its own Enter handling */
+  if(e.key==="Enter" && (t.tagName==="TEXTAREA" || t.type==="checkbox" || t.type==="file")) return;
+  if(e.key==="Enter" && /search/i.test(t.id)) return;        /* search boxes: Enter does nothing */
+  const box=t.closest(".card, #coOverlay, #leOverlay, #pvSendBar, section"); if(!box) return;
+  const all=[...box.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=file]):not([type=radio]),select,textarea")]
+    .filter(x=>!x.disabled && x.offsetParent!==null);
+  const i=all.indexOf(t); if(i<0) return;
+  const next=all[i+(e.shiftKey&&e.key==="Tab"?-1:1)];
+  if(!next) { if(e.key==="Enter"){ e.preventDefault(); t.blur(); } return; }   /* last box: Enter just closes the keyboard, never saves */
+  e.preventDefault(); next.focus(); if(next.select) try{ next.select(); }catch(_){}
+});
 $("lCity").addEventListener("change",()=>{
   resetLeadZoneState();
   const city=$("lCity").value.trim(); if(!city) return;
