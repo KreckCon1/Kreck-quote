@@ -630,7 +630,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v10.0 — Keys &amp; States</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v10.0.1 — Keys &amp; States</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -5031,16 +5031,21 @@ document.addEventListener("click",e=>{
 $("lCity").addEventListener("input",()=>{ const g=guessStateFromCity($("lCity").value); if(g){ leadState=g; setStateChips("lStateRow",g); } });
 $("quoteSearch").addEventListener("input",()=>{ renderQuoteList(openQuoteId); });
 document.addEventListener("keydown",e=>{
-  if(e.key!=="Tab" && e.key!=="Enter") return;
+  /* v10.0.1: from the Home Screen icon the iPad swallows Tab before the page sees it, so ArrowDown / ArrowUp move too
+     (not on drop-downs, number boxes or notes, where the arrows already mean something). Enter still moves forward. */
+  const k=e.key;
+  if(k!=="Tab" && k!=="Enter" && k!=="ArrowDown" && k!=="ArrowUp") return;
   const t=e.target; if(!t||!/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
   if(t.closest("#authGate")) return;                       /* sign-in has its own Enter handling */
-  if(e.key==="Enter" && (t.tagName==="TEXTAREA" || t.type==="checkbox" || t.type==="file")) return;
-  if(e.key==="Enter" && /search/i.test(t.id)) return;        /* search boxes: Enter does nothing */
+  if(k==="Enter" && (t.tagName==="TEXTAREA" || t.type==="checkbox" || t.type==="file")) return;
+  if(k==="Enter" && /search/i.test(t.id)) return;            /* search boxes: Enter does nothing */
+  if((k==="ArrowDown"||k==="ArrowUp") && (t.tagName!=="INPUT" || /^(number|date|datetime-local|time|range)$/.test(t.type))) return;
   const box=t.closest(".card, #coOverlay, #leOverlay, #pvSendBar, section"); if(!box) return;
   const all=[...box.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=file]):not([type=radio]),select,textarea")]
     .filter(x=>!x.disabled && x.offsetParent!==null);
   const i=all.indexOf(t); if(i<0) return;
-  const next=all[i+(e.shiftKey&&e.key==="Tab"?-1:1)];
+  const back = k==="ArrowUp" || (k==="Tab" && e.shiftKey);
+  const next=all[i+(back?-1:1)];
   if(!next) { if(e.key==="Enter"){ e.preventDefault(); t.blur(); } return; }   /* last box: Enter just closes the keyboard, never saves */
   e.preventDefault(); next.focus(); if(next.select) try{ next.select(); }catch(_){}
 });
