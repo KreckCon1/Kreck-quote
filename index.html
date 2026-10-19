@@ -578,6 +578,10 @@
   /* Build 13 (v9.9) "Change orders": a signed quote gets a + Change order button. The editor is a full-screen overlay
      (reason, lines, notes). Preview uses the normal customer-view overlay and send bar. Sending freezes the document into
      change_orders.snapshot and makes the customer link change.html?t=... Nothing on the original contract changes. */
+  /* v10.1 "Contract fixes" (Oct 19, before attorney review): fixed the ${docWord} slot text; Kreck's electronic signature line on
+     every contract; NY mechanic's lien + payments-before-completion notices; NJ consumer-affairs hotline + certificate copy page;
+     PA Attorney General hotline sentence; full insurance clause with exact limits ($1M occurrence / $2M aggregate, replacing
+     "$2M" everywhere); 50% deposit shown in dollars on every option; payment schedule in dollars when there is one option. */
   /* Build 14 (v10.0) "Keys & States": (1) Tab / Shift-Tab / Enter move between boxes on every form (works from the Home
      Screen icon too, where the iPad's own Tab handling is unreliable); Enter never saves anything. (2) NY / NJ / PA chips on the
      new-lead and Edit contact forms, saved on the job; quoting from a lead fills the quote's State; leads and quotes show the
@@ -630,7 +634,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v10.0.1 — Keys &amp; States</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v10.1 — Contract Fixes</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -2192,6 +2196,15 @@ function cancelNotice(st){
   };
 }
 
+/* v10.1: state-required notices that sit beside the cancellation notice on the terms page */
+const NY_LIEN_NOTICE = `Any contractor, subcontractor, or materialman who provides home improvement goods or services pursuant to your home improvement contract and who is not paid may have a valid legal claim against your property known as a mechanic's lien. Any mechanic's lien filed against your property may be discharged. Payment of the agreed-upon price under the home improvement contract prior to filing of a mechanic's lien may invalidate such lien. The owner may contact an attorney to determine his rights to discharge a mechanic's lien.`; /* GBL 771(1)(d), verbatim, bold */
+function stateNotices(st){
+  st = jobState(st);
+  if(st==="NY") return `<div class="pvTermsIntro"><b class="hd">NOTICE TO OWNER &mdash; MECHANIC'S LIEN</b><b>${NY_LIEN_NOTICE}</b></div>
+    <div class="pvTermsIntro"><b class="hd">NOTICE TO OWNER &mdash; PAYMENTS BEFORE COMPLETION</b>Kreck Contracting Corp is legally required to deposit all payments received prior to completion in accordance with subdivision four of section seventy-one-a of the New York Lien Law, and deposits them in a separate escrow account. In lieu of such deposit, a home improvement contractor may post a bond, contract of indemnity or irrevocable letter of credit with the owner guaranteeing the return or proper application of such payments to the purposes of the contract.</div>`; /* GBL 771(1)(e) */
+  if(st==="NJ") return `<div class="pvTermsIntro"><b class="hd">NEW JERSEY &mdash; CONSUMER INFORMATION</b>New Jersey Division of Consumer Affairs, toll-free: <b>1-800-242-5846</b>. A copy of Contractor's certificate of commercial general liability insurance is attached to this contract. A certificate for your project is provided before work begins.</div>`;
+  return `<div class="pvTermsIntro"><b class="hd">PENNSYLVANIA &mdash; CONTRACTOR REGISTRATION</b>The official registration number of Kreck Contracting Corp (PA170625) can be obtained from the Pennsylvania Office of Attorney General's Bureau of Consumer Protection by calling toll-free within Pennsylvania <b>1-888-520-6680</b>.</div>`; /* 73 P.S. 517.7(a)(12); wording from the AG's own FAQ */
+}
 const CONTRACT_TERMS = [
  {h:"Scope, Schedule &amp; Changes", ps:[
   {t:["all"], x:`<b>Schedule.</b> Work shall commence no later than 16 calendar weeks after contract signing and shall be completed no later than 2 calendar weeks after the start date, barring unforeseen conditions, approved add-ons, weather, or material availability delays outside Contractor's control.`},
@@ -2242,7 +2255,7 @@ const CONTRACT_TERMS = [
   {t:["all"], x:`A 50% deposit is required before the project begins. Payment in full is due upon completion of the work as stated in this contract. Invoices unpaid after 15 days are subject to a 2% per month interest charge. Estimate pricing is valid for 5 days from the estimate date due to material price volatility.`}
  ]},
  {h:"Insurance &amp; Safety", ps:[
-  {t:["all"], x:`Contractor maintains current Workers' Compensation coverage for all employees and crews and carries $2,000,000 in liability insurance. All staff complete mandatory safety training. Certificates of insurance available on request.`}
+  {t:["all"], x:`<b>Insurance.</b> Contractor carries commercial general liability insurance covering the Work under this contract, with limits of $1,000,000 per occurrence and $2,000,000 aggregate, issued by United Farm Family Insurance Company (Farm Family), 344 Route 9W, Glenmont, NY 12077, (800) 899-6519, policy no. 3102X4928. Contractor's insurance agent is Marc Valentine, PO Box 1406, Milford, PA 18337, 845-820-1796. Contractor agrees to maintain liability insurance covering personal injury in an amount not less than $50,000 and property damage in an amount not less than $50,000 for the duration of the Work. Contractor maintains Workers' Compensation coverage for all employees and crews. A certificate of insurance for your project is provided before work begins. All staff complete mandatory safety training.`} /* v10.1: exact limits from the 10/03/26 certificate; PA 517.7(a)(11), NY GBL 771(1)(i), NJ 56:8-151 */
  ]},
  {h:"Oil Canning Notice (metal work, where applicable)", ps:[
   {t:["Roofing","Siding"], x:`Flat metal panels may display a visible waviness known as oil canning — a natural cosmetic occurrence caused by thermal expansion/contraction and manufacturing and installation variables. Oil canning does not affect performance, weather resistance, or lifespan and is not a material or installation defect.`}
@@ -2273,7 +2286,7 @@ function buildCancelPage(st, docWord){
    customer signs (NJ: receives a copy). The <span data-cx-date> and <span data-cx-deadline> slots hold plain words until
    proposal.html (v4.3) fills them from signed_at. Live builder previews show the same words. */
 const cxDateSlot = `<span data-cx-date>the date you sign ${docWord}</span>`;
-const cxDeadlineSlot = `<span data-cx-deadline>the third business day after ${st==="NJ"?"you receive a copy of ${docWord}":"you sign ${docWord}"}</span>`;
+const cxDeadlineSlot = `<span data-cx-deadline>the third business day after ${st==="NJ"?`you receive a copy of ${docWord}`:`you sign ${docWord}`}</span>`; /* v10.1: inner strings were plain quotes, so ${docWord} printed literally */
 const cancelForm = copy=>`<div class="pvCancelForm">
   <div class="ch">NOTICE OF CANCELLATION — ${copy}</div>
   <div>Date of transaction: <b>${cxDateSlot}</b></div>
@@ -2346,7 +2359,7 @@ function showPreview(m, capture){
       <span class="pvBadge" style="border-color:var(--orange);color:var(--orange-deep)">OC Platinum Preferred</span>
       <span class="pvBadge">TAMKO Pro Platinum</span>
       <span class="pvBadge">James Hardie Certified Installer</span>
-      <span class="pvBadge">Google ★★★★★</span><span class="pvBadge">Fully Insured — $2M</span>
+      <span class="pvBadge">Google ★★★★★</span><span class="pvBadge">Fully Insured — $1M / $2M agg.</span>
     </div>
     ${hero?`<div class="pvHeroWrap"><div class="pvHeroFrame"></div><img class="pvHero" src="${hero}"></div>`:""}
     <div class="pvCoverBlack">
@@ -2372,7 +2385,7 @@ function showPreview(m, capture){
       <li><b>Owens Corning Platinum Preferred</b> — a status held by fewer than 1% of roofing contractors nationwide</li>
       <li><b>The only contractor in the Hudson Valley using The Catch-All system</b> — protecting your home and property from debris during the project</li>
       <li><b>Professional crews — not day labor</b> — with clean, organized, respectful job sites</li>
-      <li><b>Fully insured</b>, $2,000,000 liability coverage, Workers' Compensation on every crew</li>
+      <li><b>Fully insured</b>: $1,000,000 per occurrence / $2,000,000 aggregate liability coverage, Workers' Compensation on every crew</li>
       <li><b>Proven systems</b> built from two decades of experience</li>
     </ul></div></div>`;
 
@@ -2393,6 +2406,7 @@ function showPreview(m, capture){
         <div class="nm">${o.name||o.label||"Quote"}</div>
         <div class="bl">${o.tier&&TIER_BLURBS[o.tier]?TIER_BLURBS[o.tier]:""}</div>
         <div class="pr">${fmt(o.total)}</div>
+        <div style="font-size:10px;color:#5a544a;margin-top:2px">50% deposit: ${fmt(Math.round(o.total*50)/100)}</div>
         <div class="ck"><span class="bx2"></span> Select this option</div>
       </div>`;}).join("")}</div>`;
   };
@@ -2408,7 +2422,7 @@ function showPreview(m, capture){
     <div class="pvBlackBar">Estimates valid for 5 days from date of estimate due to material price volatility · A 50% deposit is required before any project begins.</div>
     ${m.phasing&&m.phasing.length?`<div class="pvBlock"><div class="bh">Payment schedule</div>
       ${m.phasing.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0">
-        <span>${p.label}</span><span style="font-weight:700">${p.pct}%</span></div>`).join("")}</div>`:""}
+        <span>${p.label}</span><span style="font-weight:700">${p.pct}%${m.options.length===1?` &middot; ${fmt(Math.round(m.options[0].total*p.pct)/100)}`:""}</span></div>`).join("")}${m.options.length>1?`<div style="font-size:11px;color:#7a7265;margin-top:4px">Dollar amounts follow the option you choose; they are shown on your signed contract.</div>`:""}</div>`:""}
     ${m.isRepair?`<div class="pvWarn">Repair work is performed on a best-efforts basis and carries no warranty, per Kreck Contracting repair terms. Repairs are not guaranteed to stop any leak or extend the life of the roofing system.</div>`:""}
     <div class="pvSig">
       <div><div class="lb">Customer comments / notes</div><div class="pvComments"></div></div>
@@ -2422,6 +2436,7 @@ function showPreview(m, capture){
       <div><div class="sl" style="height:34px"></div><div class="lb">${m.customer.name} — signature</div></div>
       <div><div class="sl" style="height:34px"></div><div class="lb">Date</div></div>
     </div>
+    <div style="margin-top:16px;padding-top:8px;border-top:1.5px solid #151310;font-size:12.5px;line-height:1.5"><b>For Kreck Contracting Corp:</b> signed electronically by <b>${esc(kosSenderName())}</b> on ${today}. <span style="color:#7a7265">${REG_LINE}</span></div>
     <div class="pvFine">By signing this form I agree to and confirm the following: I certify that I am the registered owner of the above project property, or have the legal permission to authorize the work as stated. I agree to pay the total project price and understand that this work will be completed in accordance with the Kreck Contracting contract terms and conditions provided with this proposal.</div>
   </div>`;
 
@@ -2575,11 +2590,12 @@ function showPreview(m, capture){
     <div class="pvTitle">Contract Terms &amp; Conditions</div>
     <div class="pvSub">These terms are part of your agreement with Kreck Contracting Corp.</div>
     <div class="pvTermsIntro"><b class="hd">${cx.head}</b>${cx.text}<br><span style="font-size:.92em">Kreck Contracting Corp &middot; ${REG_LINE}</span></div>
+    ${stateNotices(st)}
     <div class="pvTerms">${termsBody}</div>
   </div>`;
 
   const footer=`<div class="pvFine">
-    Award-winning craftsmanship · Owens Corning Platinum Preferred Contractor · Fully insured, $2,000,000 liability coverage.
+    Award-winning craftsmanship · Owens Corning Platinum Preferred Contractor · Fully insured: $1,000,000 per occurrence / $2,000,000 aggregate liability coverage.
     This proposal is subject to the Kreck Contracting contract terms and conditions included in this document.
     Thank you for the opportunity to earn your business — we build outside the box, and we stand behind every job.
   </div>`;
@@ -2589,7 +2605,11 @@ function showPreview(m, capture){
   /* Build 5b (D6): decision hub — education page, then Authorization, THEN scope.
      Legal already renders last; the short NY cancel sentence stays glued to the
      signature block inside auth (statutory proximity requirement). */
-  const bodyHTML = cover + why + optionsPage + auth + scope + photoPage + terms + cancelPage + footer;
+  /* v10.1: NJ contracts carry a copy of the liability certificate (N.J.S.A. 56:8-151). Image stamped "COPY"; replace each July. */
+  const coiPage = st==="NJ" ? `<div class="pgBrk"><div class="pvTitle">Certificate of Liability Insurance (copy)</div>
+    <div class="pvSub">Copy of Kreck Contracting Corp's current certificate. A certificate for your project is provided before work begins.</div>
+    <img src="assets/coi-gl.png" alt="Certificate of liability insurance: United Farm Family Insurance Company, general liability $1,000,000 each occurrence, $2,000,000 aggregate, policy 3102X4928, 7/18/26 to 7/18/27" style="width:100%;max-width:720px;border:1px solid #d9d2c4;margin-top:10px"></div>` : "";
+  const bodyHTML = cover + why + optionsPage + auth + scope + photoPage + terms + cancelPage + coiPage + footer;
   const addMiniHeads = root => root.querySelectorAll(".pgBrk").forEach(el=>{
     const h=document.createElement("div");h.className="pvMiniHead";
     h.innerHTML=`<span><b>KRECK</b> CONTRACTING <span class="o">·</span> BUILD OUTSIDE THE BOX</span><span>${m.qNum||"DRAFT"} · ${today}</span>`;

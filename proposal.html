@@ -275,7 +275,7 @@
   <button id="barBtn">Review &amp; Sign</button>
 </div>
 
-<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.3</div>
+<div style="text-align:center;font-size:10px;color:#b4ac9e;padding:8px 0 26px">Kreck Contracting proposal · v4.4</div>
 
 <script>
 const SB_URL = "https://gkurmvxkkrdddzgzmsdq.supabase.co";
@@ -415,6 +415,7 @@ function renderSignatureBlock(data){
   if(cancelBy) rows.push(["Cancel by", "Midnight, " + e(longDate(cancelBy)) + " (three business days; see the Notice of Cancellation)"]);
   if(data.selected_option) rows.push(["Option accepted", e(data.selected_option)]);
   if(data.selected_price != null && data.selected_price !== "") rows.push(["Contract price", e(fmt(data.selected_price))]);
+  if(data.selected_price != null && data.selected_price !== "" && Number(data.selected_price) > 0) rows.push(["Deposit due before work begins (50%)", e(fmt(Math.round(Number(data.selected_price)*50)/100))]); /* v4.4: down payment in dollars (PA 517.7(a)(9)) */
   if(data.quote_number) rows.push(["Proposal", e(data.quote_number)]);
   if(data.job_type) rows.push(["Project", e(data.job_type)]);
   /* customer's own entries, when the server sends them (shown only if present) */
