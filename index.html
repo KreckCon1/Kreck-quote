@@ -578,6 +578,26 @@
   /* Build 13 (v9.9) "Change orders": a signed quote gets a + Change order button. The editor is a full-screen overlay
      (reason, lines, notes). Preview uses the normal customer-view overlay and send bar. Sending freezes the document into
      change_orders.snapshot and makes the customer link change.html?t=... Nothing on the original contract changes. */
+  /* v10.2 "Customers & Numbers": (1) PA contracts drop the arbitration clause and the customer's indemnity / mutual subrogation
+     waiver (73 P.S. 517.7(d) and (e)(1) can void the contract); PA keeps only the contractor-indemnifies-customer sentence. Paragraphs
+     can now carry states:[...] / notStates:[...]. (2) Customers tab: newest first, search, sort (Newest / Recent activity / Oldest /
+     A-Z / Biggest $), tap for their jobs and quotes, Export customers CSV and Export jobs CSV (share sheet on iPad, so it saves to
+     Files), plus Export to Excel: one .xlsx with Customers and Jobs tabs. (3) Board: "Sources" table per lead source - leads, quoted, signed, signed $, close rate, average signed job. */
+  .custRow{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer}
+  .custRow .who{font-weight:700}.custRow .meta{font-size:13px;color:var(--muted)}.custRow .amt{font-weight:800;font-size:16px;white-space:nowrap}
+  .custDetail{background:#faf8f4;border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;padding:12px 14px;margin:-8px 0 8px;font-size:14px}
+  .custDetail .jl{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .custDetail .jl:last-child{border-bottom:none}
+  .custDetail button{padding:6px 10px;font-size:12px;border:none;border-radius:7px;background:var(--ink);color:#fff;font-weight:700}
+  .custTools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .custTools select{flex:0 0 auto;padding:10px;font-size:15px;border:1.5px solid var(--line);border-radius:9px;background:#fff}
+  .custTools button{padding:10px 14px;font-size:14px;font-weight:700;border:1.5px solid var(--ink);border-radius:9px;background:#fff;color:var(--ink)}
+  .srcTable{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .srcTable th{text-align:right;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 8px;border-bottom:1.5px solid var(--line)}
+  .srcTable td{text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .srcTable th:first-child,.srcTable td:first-child{text-align:left}
+  .srcTable tr.tot td{font-weight:800;border-bottom:none}
+  .srcWrap{overflow-x:auto;margin-bottom:20px}
   /* v10.1.1: NY payments notice names the escrow depository (Jeff Bank, Port Jervis branch), which satisfies Lien Law 71-a(4)'s
      written notice of where the deposit is held without a separate letter. */
   /* v10.1 "Contract fixes" (Oct 19, before attorney review): fixed the ${docWord} slot text; Kreck's electronic signature line on
@@ -636,7 +656,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v10.1.1 — Contract Fixes</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v10.2 — Customers &amp; Numbers</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -648,6 +668,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
   <button data-s="sched"><span class="full">Schedule</span><span class="short">Sched</span></button>
   <button data-s="new"><span class="full">New Quote</span><span class="short">Quote</span></button>
   <button data-s="list">Quotes</button>
+  <button data-s="cust"><span class="full">Customers</span><span class="short">Cust</span></button>
   <button data-s="board">Board</button>
 </nav>
 
@@ -820,6 +841,22 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <div id="qList"><p class="note">Loading…</p></div>
   </section>
 
+  <section id="s-cust" class="screen">
+    <h2>Customers</h2>
+    <div class="leadTools"><input id="custListSearch" placeholder="Search name, phone, email, street, town…" autocomplete="off"></div>
+    <div class="custTools">
+      <select id="custSort" aria-label="Sort customers">
+        <option value="new">Newest first</option><option value="recent">Recent activity</option>
+        <option value="old">Oldest first</option><option value="az">A–Z by last name</option><option value="money">Biggest $ first</option>
+      </select>
+      <button type="button" id="custXlsx" style="background:var(--ink);color:#fff">Export to Excel</button>
+      <button type="button" id="custCsv">Customers CSV</button>
+      <button type="button" id="jobsCsv">Jobs CSV</button>
+    </div>
+    <div class="note" id="custCount"></div>
+    <div id="custList"><p class="note">Loading…</p></div>
+  </section>
+
   <section id="s-board" class="screen">
     <h2>Board</h2>
     <div class="bdBar" id="bdRange"></div>
@@ -827,6 +864,8 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
     <div class="bdSrcBanner" id="bdSrcBanner"></div>
     <div class="bdCols" id="bdCols"><p class="note">Loading…</p></div>
     <div class="bdPies" id="bdPies"></div>
+    <h2>Sources</h2>
+    <div class="srcWrap" id="bdSources"></div>
     <p class="note">Won = the customer signed. Lost and Unknown are marked by you on the lead or the quote. Tap a pie slice to filter the whole board; tap it again to clear.</p>
   </section>
 
@@ -1335,6 +1374,7 @@ document.querySelectorAll("nav button").forEach(b=>{
     if(b.dataset.s==="leads") loadLeads();
     if(b.dataset.s==="sched") loadSchedule(); /* Build 7 */
     if(b.dataset.s==="board") loadBoard(); /* Build 9 */
+    if(b.dataset.s==="cust") loadCustomers(); /* v10.2 */
   });
 });
 /* Build 8: Rate Card + Sign out live behind the gear, not a tab */
@@ -1921,7 +1961,7 @@ function classifyJob(j,quotes,signedAt){
   else if(j.status==="Lost"){ col="lost"; date=j.outcome_at||j.created_at; sub="lead"; }
   else if(j.status==="Unknown"){ col="unknown"; date=j.outcome_at||j.created_at; sub="lead · "+daysSince(j.created_at)+" days quiet"; }
   else { col="lead"; date=j.created_at; sub=(j.job_type||"")+(j.city?" · "+j.city:"")+" · "+daysSince(date)+" days"; }
-  return {id:j.id, col, date:new Date(date), dollars, who, sub, quoteId:q?q.id:null, job_type:j.job_type||"", source:srcBucket(cu.lead_source), detail:srcDetail(cu.lead_source), reason:j.lost_reason||null};
+  return {id:j.id, col, date:new Date(date), dollars, who, sub, quoteId:q?q.id:null, job_type:j.job_type||"", quoted:live.length>0, source:srcBucket(cu.lead_source), detail:srcDetail(cu.lead_source), reason:j.lost_reason||null};
 }
 const daysSince = d => Math.max(0,Math.round((Date.now()-new Date(d))/86400000));
 const shortDate = d => new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
@@ -1955,6 +1995,21 @@ function renderBoard(){
     else { leadFilter="All"; openLeadId=c.dataset.bdj; showTab("leads"); }
   }));
   renderBdPies(rows);
+  renderBdSources();
+}
+/* v10.2: per-source numbers over the Board's date range and trade filter (source filter ignored so every source shows) */
+function renderBdSources(){
+  const start=bdRangeStart();
+  const base=(bdData||[]).filter(x=>(!start||x.date>=start)&&(!bdTrade||x.job_type.indexOf(bdTrade)>=0));
+  const by={};
+  base.forEach(x=>{ const r=by[x.source]=by[x.source]||{leads:0,quoted:0,won:0,dollars:0}; r.leads++; if(x.quoted) r.quoted++; if(x.col==="won"){ r.won++; r.dollars+=x.dollars; } });
+  const keys=Object.keys(by).sort((a,b)=>by[b].dollars-by[a].dollars||by[b].leads-by[a].leads);
+  if(!keys.length){ $("bdSources").innerHTML='<p class="note">No jobs in this range.</p>'; return; }
+  const tot={leads:0,quoted:0,won:0,dollars:0}; keys.forEach(k=>{ for(const f in tot) tot[f]+=by[k][f]; });
+  const row=(name,r,cls)=>`<tr class="${cls||""}"><td>${cls?"":`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${BD_SRC_COLORS[name]||"#a49b8d"}"></i>`}${esc(name)}</td><td>${r.leads}</td><td>${r.quoted}</td><td>${r.won}</td><td>${r.dollars?fmtK(r.dollars):"—"}</td><td>${r.leads?Math.round(r.won/r.leads*100)+"%":"—"}</td><td>${r.won?fmtK(r.dollars/r.won):"—"}</td></tr>`;
+  $("bdSources").innerHTML=`<table class="srcTable"><thead><tr><th>Source</th><th>Leads</th><th>Quoted</th><th>Signed</th><th>Signed $</th><th>Close rate</th><th>Avg job</th></tr></thead>
+    <tbody>${keys.map(k=>row(k,by[k])).join("")}${row("All sources",tot,"tot")}</tbody></table>
+    <p class="note">Same date range and trade filter as the board above. Close rate = signed ÷ leads.</p>`;
 }
 const fmtK = n => n>=100000 ? "$"+Math.round(n/1000)+"k" : fmt0(n);
 function pieSVG(slices,selKey){
@@ -2010,6 +2065,162 @@ function renderBdPies(rows){
   $("pie2").querySelectorAll("[data-slice]").forEach(el=>el.addEventListener("click",()=>pickOut(el.dataset.slice)));
   $("bdPies").querySelectorAll("[data-out]").forEach(el=>el.addEventListener("click",()=>pickOut(el.dataset.out)));
 }
+
+/* ============ v10.2 — CUSTOMERS TAB + CSV EXPORT ============ */
+let custData=null, custOpenId=null;
+async function loadCustomers(){
+  $("custList").innerHTML='<p class="note">Loading…</p>';
+  const [cr,jr,qr,sr,cor]=await Promise.all([
+    db.from("customers").select("id,first_name,last_name,phone,email,street_address,city,state,zip,lead_source,created_at").order("created_at",{ascending:false}).limit(5000),
+    db.from("jobs").select("id,customer_id,job_type,status,created_at,city,state,street_address,outcome,lost_reason,outcome_at").order("created_at",{ascending:false}).limit(5000),
+    db.from("quotes").select("id,job_id,quote_number,status,markup_pct,notes,created_at,quote_line_items(name,unit,quantity,unit_cost,line_cost,sort_order,option_label,trade,category)").order("created_at",{ascending:false}).limit(5000),
+    db.from("proposal_shares").select("quote_id,signed_at").not("signed_at","is",null),
+    db.from("change_orders").select("quote_id,status,change_total").eq("status","signed")
+  ]);
+  if(cr.error){ $("custList").innerHTML='<p class="note">Could not load customers: '+esc(cr.error.message)+'</p>'; return; }
+  const signedAt={}; (sr.data||[]).forEach(r=>{ if(!signedAt[r.quote_id]||r.signed_at>signedAt[r.quote_id]) signedAt[r.quote_id]=r.signed_at; });
+  const coByQ={}; (cor.data||[]).forEach(c=>{ coByQ[c.quote_id]=(coByQ[c.quote_id]||0)+Number(c.change_total||0); });
+  const qByJob={}; (qr.data||[]).forEach(q=>{ (qByJob[q.job_id]=qByJob[q.job_id]||[]).push(q); });
+  const jByCust={}; (jr.data||[]).forEach(j=>{ (jByCust[j.customer_id]=jByCust[j.customer_id]||[]).push(j); });
+  const price=q=>{ try{ return quotePrice(q); }catch(_){ return 0; } };
+  custData=(cr.data||[]).map(c=>{
+    const jobs=(jByCust[c.id]||[]).map(j=>{
+      const qs=qByJob[j.id]||[];
+      const cls=classifyJob(Object.assign({},j,{customers:c}),qs,signedAt);
+      const quotes=qs.map(q=>({id:q.id,number:q.quote_number,status:q.status,date:q.created_at,amount:price(q),
+        signed:q.status!=="Voided"&&!!(q.status==="Approved"||parseNotes(q.notes).signedby||signedAt[q.id]), signedAt:signedAt[q.id]||null, changes:coByQ[q.id]||0}));
+      return {j, cls, quotes};
+    });
+    const signedTotal=jobs.reduce((s,x)=>s+x.quotes.filter(q=>q.signed).reduce((a,q)=>a+q.amount+q.changes,0),0);
+    const dates=[c.created_at].concat(jobs.map(x=>x.j.created_at),[].concat(...jobs.map(x=>x.quotes.map(q=>q.signedAt||q.date)))).filter(Boolean).map(d=>new Date(d).getTime());
+    return {c, jobs, signedTotal, signedCount:jobs.reduce((s,x)=>s+x.quotes.filter(q=>q.signed).length,0), quoteCount:jobs.reduce((s,x)=>s+x.quotes.length,0),
+      last:Math.max(...dates), name:((c.first_name||"")+" "+(c.last_name||"")).trim()||"—",
+      hay:[c.first_name,c.last_name,c.phone,c.email,c.street_address,c.city,c.state,c.zip,c.lead_source].concat(jobs.map(x=>x.j.street_address||"")).join(" ").toLowerCase()};
+  });
+  renderCustomers();
+}
+function custFiltered(){
+  const q=($("custListSearch").value||"").trim().toLowerCase();
+  const digits=q.replace(/[^0-9]/g,"");
+  let xs=(custData||[]).filter(x=>!q || x.hay.includes(q) || (digits.length>=3 && String(x.c.phone||"").replace(/[^0-9]/g,"").includes(digits)));
+  const k=$("custSort").value;
+  const t=x=>new Date(x.c.created_at).getTime();
+  const ln=x=>((x.c.last_name||"")+" "+(x.c.first_name||"")).trim().toLowerCase();
+  xs=xs.slice().sort(k==="old"?(a,b)=>t(a)-t(b) : k==="recent"?(a,b)=>b.last-a.last : k==="az"?(a,b)=>ln(a).localeCompare(ln(b)) : k==="money"?(a,b)=>b.signedTotal-a.signedTotal||t(b)-t(a) : (a,b)=>t(b)-t(a));
+  return xs;
+}
+function renderCustomers(){
+  if(!custData) return;
+  const xs=custFiltered();
+  $("custCount").textContent=xs.length+" of "+custData.length+" customer"+(custData.length===1?"":"s");
+  if(!xs.length){ $("custList").innerHTML='<p class="note">'+(custData.length?"No customer matches that search.":"No customers yet. They appear here as leads are saved.")+'</p>'; return; }
+  const COL={lead:"Lead",quoted:"Quoted",won:"Signed",lost:"Lost",unknown:"Never heard back"};
+  $("custList").innerHTML=xs.slice(0,300).map(x=>{
+    const c=x.c, open=x.c.id===custOpenId;
+    const where=[c.city,c.state&&c.state!=="NY"?c.state:""].filter(Boolean).join(", ");
+    const meta=[where, c.lead_source||"", "added "+new Date(c.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+      x.jobs.length+" job"+(x.jobs.length===1?"":"s")].filter(Boolean).join(" · ");
+    const detail=open?`<div class="custDetail">
+      <div class="dMeta" style="color:var(--muted);margin-bottom:6px">${[c.phone,c.email,[c.street_address,c.city,c.state,c.zip].filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")||"No contact details"}</div>
+      ${x.jobs.length?x.jobs.map(({j,cls,quotes})=>`<div class="jl"><div><b>${esc(j.job_type||"Job")}</b> · ${COL[cls.col]||cls.col} · ${new Date(j.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+        ${quotes.length?`<div class="dMeta" style="margin:2px 0 0">${quotes.map(q=>esc(q.number||"")+" "+fmt0(q.amount+(q.signed?q.changes:0))+(q.signed?" signed":" · "+esc(q.status||""))).join(" &middot; ")}</div>`:""}</div>
+        <div style="white-space:nowrap">${quotes[0]?`<button type="button" data-cq="${quotes[0].id}">Quote</button>`:""} <button type="button" data-cj="${j.id}">Lead</button></div></div>`).join(""):'<div class="dMeta">No jobs yet.</div>'}
+    </div>`:"";
+    return `<div class="custRow" data-cid="${c.id}"><div style="min-width:0"><div class="who">${esc(x.name)}</div><div class="meta">${esc(meta)}</div></div>
+      <div class="amt">${x.signedTotal?fmt0(x.signedTotal):""}</div></div>${detail}`;
+  }).join("")+(xs.length>300?'<p class="note">Showing the first 300. Narrow it with search, or export the full list.</p>':"");
+}
+$("custListSearch").addEventListener("input",renderCustomers);
+$("custSort").addEventListener("change",renderCustomers);
+$("custList").addEventListener("click",e=>{
+  const bq=e.target.closest("[data-cq]"); if(bq){ e.stopPropagation(); jumpToQuote(bq.dataset.cq); return; }
+  const bj=e.target.closest("[data-cj]"); if(bj){ e.stopPropagation(); leadFilter="All"; openLeadId=bj.dataset.cj; showTab("leads"); return; }
+  const r=e.target.closest(".custRow"); if(!r) return;
+  custOpenId = custOpenId===r.dataset.cid ? null : r.dataset.cid; renderCustomers();
+});
+/* CSV: quoted fields, formula-injection guard, Excel-friendly BOM */
+function csvOf(rows){
+  const cell=v=>{ let s=v==null?"":String(v); if(/^[=+\-@]/.test(s)) s="'"+s; return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  return "\ufeff"+rows.map(r=>r.map(cell).join(",")).join("\r\n");
+}
+async function kosSaveFile(name,data,mime){
+  mime=mime||"text/csv";
+  const blob=new Blob([data],{type:mime});
+  try{
+    const file=new File([blob],name,{type:mime});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; }
+  }catch(err){ if(err&&err.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },4000);
+}
+const ymdLocal=d=>{ const x=new Date(d); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }; /* local date, not UTC: an 8pm lead stays on its own day */
+const csvDate=d=>d?ymdLocal(d):"";
+const csvStamp=()=>ymdLocal(new Date());
+/* One definition of each export, used by both CSV and Excel. kind: d=date, $=money, t=text kept as typed, n=number */
+const CUST_COLS=[["Added","d"],["First name"],["Last name"],["Phone","t"],["Email"],["Street"],["City"],["State"],["Zip","t"],["Source"],["Source detail"],["Jobs","n"],["Quotes","n"],["Signed contracts","n"],["Signed total","$"],["Last activity","d"]];
+const JOB_COLS=[["Job created","d"],["Customer"],["Phone","t"],["Email"],["Street"],["City"],["State"],["Trade"],["Status"],["Lost reason"],["Latest quote"],["Quote date","d"],["Quote amount","$"],["Signed date","d"],["Signed amount","$"],["Signed change orders","$"],["Source"],["Source detail"]];
+function custExportRows(){
+  return custFiltered().map(x=>{ const c=x.c; return [c.created_at,c.first_name,c.last_name,c.phone,c.email,c.street_address,c.city,c.state,c.zip,srcBucket(c.lead_source),srcDetail(c.lead_source),x.jobs.length,x.quoteCount,x.signedCount,x.signedTotal,x.last?new Date(x.last).toISOString():null]; });
+}
+function jobExportRows(){
+  const COL={lead:"Lead",quoted:"Quoted",won:"Signed",lost:"Lost",unknown:"Never heard back"};
+  const out=[];
+  custFiltered().forEach(x=>x.jobs.forEach(({j,cls,quotes})=>{
+    const live=quotes.filter(q=>q.status!=="Voided"), latest=live[0]||null, sq=live.find(q=>q.signed)||null;
+    out.push([j.created_at,x.name,x.c.phone,x.c.email,j.street_address||x.c.street_address,j.city||x.c.city,j.state||x.c.state,j.job_type,COL[cls.col]||cls.col,j.lost_reason||"",
+      latest?latest.number:"",latest?latest.date:null,latest?latest.amount:null,sq?(sq.signedAt||sq.date):null,sq?sq.amount:null,sq?sq.changes:null,srcBucket(x.c.lead_source),srcDetail(x.c.lead_source)]);
+  }));
+  return out;
+}
+function rowsForCsv(cols,rows){
+  return [cols.map(c=>c[0])].concat(rows.map(r=>r.map((v,i)=>{ const k=cols[i][1]; if(v==null||v==="") return ""; if(k==="d") return csvDate(v); if(k==="$") return Number(v).toFixed(2); return v; })));
+}
+$("custCsv").addEventListener("click",async ()=>{
+  if(!custData){ toast("Still loading — try again in a second"); return; }
+  await kosSaveFile("Kreck-customers-"+csvStamp()+".csv",csvOf(rowsForCsv(CUST_COLS,custExportRows())));
+});
+$("jobsCsv").addEventListener("click",async ()=>{
+  if(!custData){ toast("Still loading — try again in a second"); return; }
+  await kosSaveFile("Kreck-jobs-"+csvStamp()+".csv",csvOf(rowsForCsv(JOB_COLS,jobExportRows())));
+});
+/* Excel: the spreadsheet library loads only when this button is first used (needs signal that first time). xlsx-js-style keeps
+   bold headers and fills; if it can't load, plain SheetJS still makes a correct .xlsx without the styling. */
+function kosLoadScript(src){ return new Promise((ok,no)=>{ const t=document.createElement("script"); t.src=src; t.onload=ok; t.onerror=()=>no(new Error("could not load "+src)); document.head.appendChild(t); }); }
+async function kosXlsxLib(){
+  if(window.XLSX) return window.XLSX;
+  for(const u of ["https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js","https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"]){
+    try{ await kosLoadScript(u); if(window.XLSX) return window.XLSX; }catch(_){}
+  }
+  throw new Error("The Excel tool didn't load — check signal and try again, or use the CSV buttons");
+}
+function xlsxSheet(X,cols,rows){
+  const head={font:{bold:true,color:{rgb:"FFFFFF"}},fill:{patternType:"solid",fgColor:{rgb:"151310"}},alignment:{vertical:"center"}};
+  const aoa=[cols.map(c=>({v:c[0],t:"s",s:head}))].concat(rows.map(r=>r.map((v,i)=>{
+    const k=cols[i][1];
+    if(v==null||v==="") return {v:"",t:"s"};
+    if(k==="d"){ const d=new Date(v); return isNaN(d)?{v:String(v),t:"s"}:{v:d,t:"d",z:"yyyy-mm-dd",s:{numFmt:"yyyy-mm-dd"}}; }
+    if(k==="$") return {v:Math.round(Number(v)*100)/100,t:"n",z:"$#,##0.00",s:{numFmt:"$#,##0.00"}};
+    if(k==="n") return {v:Number(v)||0,t:"n"};
+    return {v:String(v),t:"s"};
+  })));
+  const ws=X.utils.aoa_to_sheet(aoa,{cellDates:true});
+  ws["!cols"]=cols.map((c,i)=>({wch:Math.min(40,Math.max(c[0].length+2,...aoa.slice(1,300).map(r=>String(r[i]&&r[i].v instanceof Date?"2026-01-01":(r[i]?r[i].v:"")).length+2)))}));
+  ws["!autofilter"]={ref:X.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(aoa.length-1,0),c:cols.length-1}})};
+  return ws;
+}
+$("custXlsx").addEventListener("click",async ()=>{
+  if(!custData){ toast("Still loading — try again in a second"); return; }
+  const b=$("custXlsx"); const old=b.textContent; b.disabled=true; b.textContent="Building…";
+  try{
+    const X=await kosXlsxLib();
+    const wb=X.utils.book_new();
+    X.utils.book_append_sheet(wb,xlsxSheet(X,CUST_COLS,custExportRows()),"Customers");
+    X.utils.book_append_sheet(wb,xlsxSheet(X,JOB_COLS,jobExportRows()),"Jobs");
+    const data=X.write(wb,{bookType:"xlsx",type:"array",cellStyles:true});
+    await kosSaveFile("Kreck-customers-and-jobs-"+csvStamp()+".xlsx",data,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  }catch(err){ toast((err&&err.message)||"Excel export failed — use the CSV buttons"); }
+  b.disabled=false; b.textContent=old;
+});
 
 /* ============ CUSTOMER-FACING PREVIEW ============ */
 const TIER_BLURBS = {
@@ -2263,8 +2474,9 @@ const CONTRACT_TERMS = [
   {t:["Roofing","Siding"], x:`Flat metal panels may display a visible waviness known as oil canning — a natural cosmetic occurrence caused by thermal expansion/contraction and manufacturing and installation variables. Oil canning does not affect performance, weather resistance, or lifespan and is not a material or installation defect.`}
  ]},
  {h:"Release, Indemnification &amp; Disputes", ps:[
-  {t:["all"], x:`Each party shall carry its own insurance for its own property and personnel. The parties mutually waive subrogation to the extent permitted by law and by each party's insurance policies. Contractor indemnifies Customer for claims arising from Contractor's negligent performance of the Work; Customer indemnifies Contractor for claims arising from Customer's negligence, concealed hazardous conditions not disclosed to Contractor, or Customer-directed deviations.`},
-  {t:["all"], x:`<b>Arbitration.</b> Disputes arising from this Agreement shall be settled by binding arbitration in Port Jervis, New York, under the rules of the American Arbitration Association. Costs of arbitration borne equally; each party bears its own attorneys' fees unless the arbitrator apportions otherwise.`}
+  {t:["all"], states:["PA"], x:`Contractor indemnifies Customer for claims arising from Contractor's negligent performance of the Work.`}, /* v10.2: PA only - no customer indemnity (517.7(e)(1)) */
+  {t:["all"], notStates:["PA"], x:`Each party shall carry its own insurance for its own property and personnel. The parties mutually waive subrogation to the extent permitted by law and by each party's insurance policies. Contractor indemnifies Customer for claims arising from Contractor's negligent performance of the Work; Customer indemnifies Contractor for claims arising from Customer's negligence, concealed hazardous conditions not disclosed to Contractor, or Customer-directed deviations.`},
+  {t:["all"], notStates:["PA"], x:`<b>Arbitration.</b> Disputes arising from this Agreement shall be settled by binding arbitration in Port Jervis, New York, under the rules of the American Arbitration Association. Costs of arbitration borne equally; each party bears its own attorneys' fees unless the arbitrator apportions otherwise.`}
  ]},
  {h:"General Provisions", ps:[
   {t:["all"], x:`1. All work performed in a professional and workmanlike manner, in compliance with applicable local, state, and federal laws and codes.`},
@@ -2584,7 +2796,7 @@ function showPreview(m, capture){
   const tOn = t => t.includes("all") || t.some(x=>tset.has(x));
   const LTRS = "abcdefghijklmnop";
   const termsBody = CONTRACT_TERMS.map(s=>{
-    const vis = s.ps.filter(p=>tOn(p.t));
+    const vis = s.ps.filter(p=>tOn(p.t) && (!p.states||p.states.includes(st)) && (!p.notStates||!p.notStates.includes(st))); /* v10.2: state-specific paragraphs */
     if(!vis.length) return "";
     return `<h4>${s.h}</h4>${vis.map((p,i)=>`<p>${s.letter?`<b>${LTRS[i]}.</b> `:""}${p.x}</p>`).join("")}`;
   }).join("").replace(/\{\{STATE\}\}/g, stName); /* v9.7 */
