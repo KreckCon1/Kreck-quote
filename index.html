@@ -578,6 +578,24 @@
   /* Build 13 (v9.9) "Change orders": a signed quote gets a + Change order button. The editor is a full-screen overlay
      (reason, lines, notes). Preview uses the normal customer-view overlay and send bar. Sending freezes the document into
      change_orders.snapshot and makes the customer link change.html?t=... Nothing on the original contract changes. */
+  /* v10.3 "VELUX skylights": the roof add-on opens a size picker built from VELUX's FS chart (14 sizes, outside frame + rough
+     opening), flashing kit (EDL shingle/shake/slate, EDW tile, EDM metal) and quantity. Every size $1,750 installed, S06 (largest)
+     $2,000. VELUX now ships the solar room-darkening shade with every skylight, so it is included and named. The proposal gets a
+     "Your skylights" box with size, dimensions, flashing, glass, shade, VELUX warranty, the reframing note, and the interior-finish
+     exclusion (also added to the roofing exclusions). */
+  #skyPick{display:none;position:fixed;inset:0;z-index:120;background:rgba(20,17,13,.55);align-items:flex-end;justify-content:center}
+  #skyPick.on{display:flex}
+  #skyPick .sp{background:#fff;width:100%;max-width:760px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  #skyPick h3{margin:0 0 4px;font-size:18px}
+  #skyPick .sub{font-size:13px;color:var(--muted);margin-bottom:10px}
+  #skyPick .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+  #skyPick .sz{border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:9px 10px;text-align:left;font-size:12px;color:var(--muted);line-height:1.35}
+  #skyPick .sz b{display:block;font-size:15px;color:var(--ink)}
+  #skyPick .sz.sel{border-color:var(--orange);background:#fff3e8}
+  #skyPick .fl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  #skyPick .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #skyPick .row input{width:80px;padding:10px;font-size:16px;border:1.5px solid var(--line);border-radius:8px}
+  #skyPick .row button{padding:12px 18px;font-size:15px;font-weight:800;border:none;border-radius:9px}
   /* v10.2 "Customers & Numbers": (1) PA contracts drop the arbitration clause and the customer's indemnity / mutual subrogation
      waiver (73 P.S. 517.7(d) and (e)(1) can void the contract); PA keeps only the contractor-indemnifies-customer sentence. Paragraphs
      can now carry states:[...] / notStates:[...]. (2) Customers tab: newest first, search, sort (Newest / Recent activity / Oldest /
@@ -656,7 +674,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v10.2 — Customers &amp; Numbers</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v10.3 — VELUX Skylights</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -928,6 +946,16 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
   <input id="coPay" value="Due with the final payment unless stated otherwise.">
   <div class="coTot" id="coTot"></div>
 </div></div>
+<div id="skyPick"><div class="sp">
+  <h3>VELUX fixed skylight (FS)</h3>
+  <div class="sub">Pick the size by rough opening. Solar room-darkening shade included. $1,750 installed; S06 $2,000.</div>
+  <div class="grid" id="skySizes"></div>
+  <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">FLASHING (MATCH THE ROOF)</div>
+  <div class="fl" id="skyFlash"></div>
+  <div class="row"><label for="skyQty" style="font-weight:700">Qty</label><input id="skyQty" type="number" inputmode="numeric" min="1" value="1">
+    <button type="button" id="skyCancel" style="background:#eceae6;color:var(--ink)">Cancel</button>
+    <button type="button" id="skyAdd" style="background:var(--orange);color:#fff">Add skylight</button></div>
+</div></div>
 <div id="coBar"><button type="button" id="coCancel">✕ Cancel</button><button type="button" class="main" id="coPreview">Preview &amp; send</button></div>
 
 <div id="leOverlay">
@@ -1150,7 +1178,7 @@ const TRADES = {
     ],
     addonGroups:[
       {title:"Roof add-ons", items:[
-        {name:"Skylight — installed complete",price:1750,L:200,M:900,O:0,unit:"EA",note:"Velux unit + flashing + labor"},
+        {name:"VELUX skylight — installed complete",price:1750,L:200,M:900,O:0,unit:"EA",note:"pick size + flashing; S06 $2,000",skyPicker:true},
         {name:"Skylight reflash only",price:450,L:140,M:130,O:0,unit:"EA"},
         {name:"Chimney flashing — standard",price:535,L:171,M:150,O:0,unit:"EA"},
         {name:"Chimney flashing — copper",price:1535,L:271,M:650,O:0,unit:"EA"},
@@ -2449,6 +2477,7 @@ const CONTRACT_TERMS = [
   {t:["Roofing"], x:`<b>Gutters &amp; gutter guards.</b> Contractor will exercise reasonable care around existing gutters and gutter protection systems, but is not responsible for damage to gutters, gutter guards, or leaf systems that are aged, brittle, or improperly fastened, nor for debris entering gutters during tear-off. Gutter cleaning is not included unless stated in the scope.`},
   {t:["Roofing"], x:`<b>Attic &amp; interior dust.</b> Tear-off and installation cause vibration and may release dust and small debris into attic spaces. Customer should cover or remove stored items in the attic. Contractor is not responsible for dust or debris in attic spaces.`},
   {t:["Roofing","Siding"], x:`<b>Existing ventilation &amp; code conditions.</b> Contractor installs ventilation as stated in the scope. Contractor is not responsible for pre-existing ventilation deficiencies, insulation conditions, or code issues in areas outside the contracted scope, or for condensation or mold arising from such pre-existing conditions.`},
+  {t:["Roofing"], x:`<b>Interior finish.</b> Interior finish work (drywall, trim, paint), including around skylights, is not included in a roof contract and is available as an extra by change order.`}, /* v10.3 */
   {t:["Roofing"], x:`<b>Solar panels.</b> Installation of solar panels or any roof-penetrating equipment after project completion voids the workmanship warranty in affected areas.`}
  ]},
  {h:"Materials", ps:[
@@ -2712,6 +2741,7 @@ function showPreview(m, capture){
         ${g.opts.map(optScope).join("")}`).join("")
       : m.options.map(optScope).join("")}
     ${anySpec?`<div style="border:2px solid var(--orange);padding:10px 14px;margin:14px 0 4px;font-weight:800;font-size:12.5px;color:var(--orange-deep)">${COMPARE_US_LINE}</div>`:""}
+    ${skylightBox(m.options)}
     <div class="pvFine" style="border-top:none;padding-top:6px">Every Kreck project includes full site protection, complete cleanup with magnetic sweep of the work area, and haul-away of all job-related debris.</div>
     ${refsCard}
   </div>`;
@@ -3075,6 +3105,69 @@ function renderBuilder(){
   renderAddons();
 }
 
+/* ============ v10.3 — VELUX FS SKYLIGHTS ============
+   Sizes from VELUX USA's FS page (pro.veluxusa.com/products/skylights/fs), inches, width x height. */
+const VELUX_FS = [
+  ["A06","15 1/4 x 46 1/4","14 1/2 x 45 3/4"],["C01","21 1/2 x 27 3/8","21 x 26 7/8"],["C04","21 1/2 x 38 3/8","21 x 37 7/8"],
+  ["C06","21 1/2 x 46 1/4","21 x 45 3/4"],["C08","21 1/2 x 54 15/16","21 x 54 7/16"],["C12","21 1/2 x 70 3/4","21 x 70 1/4"],
+  ["D26","23 1/4 x 23 7/16","22 1/2 x 22 15/16"],["D06","23 1/4 x 46 1/4","22 1/2 x 45 3/4"],["M02","30 9/16 x 30 1/2","30 1/16 x 30"],
+  ["M04","30 9/16 x 38 3/8","30 1/16 x 37 7/8"],["M06","30 9/16 x 46 1/4","30 1/16 x 45 3/4"],["M08","30 9/16 x 54 15/16","30 1/16 x 54 7/16"],
+  ["S01","44 3/4 x 27 3/8","44 1/4 x 26 7/8"],["S06","44 3/4 x 46 1/4","44 1/4 x 45 3/4"]];
+const VELUX_FLASH = [["EDL","shingle, shake or slate roof"],["EDW","tile roof"],["EDM","metal roof"]];
+const SKY_BIG = {S06:2000};   /* everything else uses the add-on's base price */
+let skyCur=null;
+function skyOpen(a){
+  skyCur={a, size:null, flash:"EDL"};
+  $("skySizes").innerHTML=VELUX_FS.map(([c,of,ro])=>`<button type="button" class="sz" data-sz="${c}"><b>${c}${SKY_BIG[c]?" · "+fmt0(SKY_BIG[c]):""}</b>Rough opening ${ro}"<br>Outside ${of}"</button>`).join("");
+  $("skyFlash").innerHTML=VELUX_FLASH.map(([k,t])=>`<button type="button" class="chip ${k==="EDL"?"sel":""}" data-fl="${k}">${k} · ${t}</button>`).join("");
+  $("skyQty").value="1"; $("skyPick").classList.add("on");
+}
+$("skySizes").addEventListener("click",e=>{ const b=e.target.closest("[data-sz]"); if(!b) return; skyCur.size=b.dataset.sz; document.querySelectorAll("#skySizes .sz").forEach(x=>x.classList.toggle("sel",x===b)); });
+$("skyFlash").addEventListener("click",e=>{ const b=e.target.closest("[data-fl]"); if(!b) return; skyCur.flash=b.dataset.fl; document.querySelectorAll("#skyFlash .chip").forEach(x=>x.classList.toggle("sel",x===b)); });
+$("skyCancel").addEventListener("click",()=>{ $("skyPick").classList.remove("on"); skyCur=null; });
+$("skyPick").addEventListener("click",e=>{ if(e.target.id==="skyPick"){ $("skyPick").classList.remove("on"); skyCur=null; } });
+function skyLineName(code,flash){
+  const row=VELUX_FS.find(r=>r[0]===code)||[code,"",""];
+  return `VELUX FS ${code} fixed skylight (rough opening ${row[2]}") with ${flash} flashing and solar room-darkening shade — installed complete`;
+}
+$("skyAdd").addEventListener("click",()=>{
+  if(!skyCur||!skyCur.size){ toast("Pick a size first"); return; }
+  const qty=Math.max(1,Math.round(Number($("skyQty").value)||1));
+  const a=skyCur.a, name=skyLineName(skyCur.size,skyCur.flash), price=SKY_BIG[skyCur.size]||a.price;
+  const tCount=options.filter(o=>o.trade===currentTrade).length;
+  const uid=newUid();
+  options.forEach(o=>{
+    if(o.trade!==currentTrade) return;
+    const ex=o.lines.find(l=>l.name===name && !l.isCustom);
+    if(ex) ex.qty=r2(ex.qty+qty);
+    else o.lines.push({name,unit:"EA",qty,price,L:a.L,M:a.M,O:a.O,uid,trade:currentTrade});
+  });
+  $("skyPick").classList.remove("on"); skyCur=null;
+  renderLines(); toast(qty+" × VELUX FS added"+(tCount>1?" (all "+tCount+" "+currentTrade+" options)":""));
+});
+/* Customer-facing box listing every VELUX FS line on the proposal */
+function skylightBox(options){
+  const seen=new Map();
+  (options||[]).forEach(o=>(o.lines||[]).forEach(l=>{
+    const mt=String(l.name||"").match(/^VELUX FS ([A-Z]\d\d) .*? with (ED[LWM]) flashing/);
+    if(!mt) return; const k=mt[1]+"|"+mt[2]; seen.set(k,Math.max(seen.get(k)||0,Number(l.qty)||1));
+  }));
+  if(!seen.size) return "";
+  const FL={EDL:"EDL step flashing kit for shingle, shake or slate roofs",EDW:"EDW flashing kit for tile roofs",EDM:"EDM flashing kit for metal roofs"};
+  const rows=[...seen.entries()].map(([k,q])=>{ const [c,f]=k.split("|"); const r=VELUX_FS.find(x=>x[0]===c)||[c,"—","—"];
+    return `<tr><td><b>VELUX FS ${c}</b> fixed, deck-mounted</td><td>${q}</td><td>${r[1]}"</td><td>${r[2]}"</td><td>${FL[f]||f}</td></tr>`; }).join("");
+  return `<div style="border:2px solid #151310;border-radius:8px;padding:14px 16px;margin:18px 0 6px">
+    <div style="font-weight:900;font-size:15px;margin-bottom:6px">Your skylights</div>
+    <table class="pvTable"><tr><th>Skylight</th><th>Qty</th><th>Outside frame (W x H)</th><th>Rough opening (W x H)</th><th>Flashing</th></tr>${rows}</table>
+    <ul style="margin:8px 0 0 16px;padding:0;font-size:11.5px;line-height:1.55">
+      <li>VELUX Standard Safety Glass; pre-finished white interior wood frame; low-profile, deck-mounted design.</li>
+      <li>White solar-powered room-darkening shade with remote control included with every skylight.</li>
+      <li>VELUX warranty when installed with VELUX flashing: 10 years installation, 20 years glass, 10 years product, 5 years shades and controls, subject to VELUX's warranty terms.</li>
+      <li>Replacement skylights are matched to the nearest VELUX size; if the existing opening must be reframed to fit, that work is handled under Wood Replacement / change order.</li>
+      <li><b>Interior finish around skylights (drywall, trim, paint) is not included in a roof contract and is available as an extra.</b></li>
+    </ul></div>`;
+}
+
 /* ============ ADD-ONS ============ */
 function renderAddons(){
   const T = TRADES[currentTrade];
@@ -3097,6 +3190,7 @@ function renderAddons(){
                   price:0,L:0,M:0,O:0,isCustom:true,matHandling:true});
       renderLines(); toast("Enter the materials cost — 15% adds automatically"+many); return;
     }
+    if(a.skyPicker){ skyOpen(a); return; } /* v10.3 */
     if(a.customLine){
       pushLineToAllOptions({name:a.prename||"",unit:"EA",qty:1,price:0,L:0,M:0,O:0,isCustom:true});
       renderLines(); toast("Line added — set the price"+(currentTrade==="Custom"?" and cost":"")+many); return;
@@ -4104,6 +4198,7 @@ function renderQuoteList(openId){
    line, so they're re-estimated (60% of price) with a warning toast. */
 function b5FindCosts(trade, name){
   const T=TRADES[trade]||{};
+  if(/^VELUX FS [A-Z]\d\d /.test(String(name||""))){ const sk=(TRADES.Roofing.addonGroups[0].items||[]).find(x=>x.skyPicker); if(sk) return {L:sk.L||0,M:sk.M||0,O:sk.O||0}; } /* v10.3 */
   for(const p of (T.packages||[])) if(p.name===name)
     return {isPackage:true,L:p.L||0,M:p.M||0,O:p.O||0};
   for(const tg of (T.toggles||[])) if(tg.name===name)
