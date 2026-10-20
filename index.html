@@ -578,6 +578,8 @@
   /* Build 13 (v9.9) "Change orders": a signed quote gets a + Change order button. The editor is a full-screen overlay
      (reason, lines, notes). Preview uses the normal customer-view overlay and send bar. Sending freezes the document into
      change_orders.snapshot and makes the customer link change.html?t=... Nothing on the original contract changes. */
+  /* v10.1.1: NY payments notice names the escrow depository (Jeff Bank, Port Jervis branch), which satisfies Lien Law 71-a(4)'s
+     written notice of where the deposit is held without a separate letter. */
   /* v10.1 "Contract fixes" (Oct 19, before attorney review): fixed the ${docWord} slot text; Kreck's electronic signature line on
      every contract; NY mechanic's lien + payments-before-completion notices; NJ consumer-affairs hotline + certificate copy page;
      PA Attorney General hotline sentence; full insurance clause with exact limits ($1M occurrence / $2M aggregate, replacing
@@ -634,7 +636,7 @@ button,.chip,.stBtn,.copyBtn,.tierBtn,.optTab,input[type=checkbox],label{touch-a
 
 <header>
   <div class="brand">KRECK<span>OS</span></div>
-  <div class="sub" id="verSub">Quote + Lead Engine v10.1 — Contract Fixes</div>
+  <div class="sub" id="verSub">Quote + Lead Engine v10.1.1 — Contract Fixes</div>
   <div id="connDot">connecting…</div>
   <button id="gearBtn" type="button" aria-label="Rate card and sign out" title="Rate card · Sign out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
@@ -2201,7 +2203,7 @@ const NY_LIEN_NOTICE = `Any contractor, subcontractor, or materialman who provid
 function stateNotices(st){
   st = jobState(st);
   if(st==="NY") return `<div class="pvTermsIntro"><b class="hd">NOTICE TO OWNER &mdash; MECHANIC'S LIEN</b><b>${NY_LIEN_NOTICE}</b></div>
-    <div class="pvTermsIntro"><b class="hd">NOTICE TO OWNER &mdash; PAYMENTS BEFORE COMPLETION</b>Kreck Contracting Corp is legally required to deposit all payments received prior to completion in accordance with subdivision four of section seventy-one-a of the New York Lien Law, and deposits them in a separate escrow account. In lieu of such deposit, a home improvement contractor may post a bond, contract of indemnity or irrevocable letter of credit with the owner guaranteeing the return or proper application of such payments to the purposes of the contract.</div>`; /* GBL 771(1)(e) */
+    <div class="pvTermsIntro"><b class="hd">NOTICE TO OWNER &mdash; PAYMENTS BEFORE COMPLETION</b>Kreck Contracting Corp is legally required to deposit all payments received prior to completion in accordance with subdivision four of section seventy-one-a of the New York Lien Law, and deposits them in a separate escrow account at <b>Jeff Bank, 20-22 Fowler Street, Port Jervis, NY 12771</b>. In lieu of such deposit, a home improvement contractor may post a bond, contract of indemnity or irrevocable letter of credit with the owner guaranteeing the return or proper application of such payments to the purposes of the contract.</div>`; /* GBL 771(1)(e) */
   if(st==="NJ") return `<div class="pvTermsIntro"><b class="hd">NEW JERSEY &mdash; CONSUMER INFORMATION</b>New Jersey Division of Consumer Affairs, toll-free: <b>1-800-242-5846</b>. A copy of Contractor's certificate of commercial general liability insurance is attached to this contract. A certificate for your project is provided before work begins.</div>`;
   return `<div class="pvTermsIntro"><b class="hd">PENNSYLVANIA &mdash; CONTRACTOR REGISTRATION</b>The official registration number of Kreck Contracting Corp (PA170625) can be obtained from the Pennsylvania Office of Attorney General's Bureau of Consumer Protection by calling toll-free within Pennsylvania <b>1-888-520-6680</b>.</div>`; /* 73 P.S. 517.7(a)(12); wording from the AG's own FAQ */
 }
